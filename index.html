@@ -1,109 +1,113 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Открытие записи</title>
-<style>
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    margin: 10px;
-    padding: 0;
-    background-color: #f9f9f9;
-  }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Открытие записи</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 10px;
+      padding: 0;
+      background-color: #f9f9f9;
+    }
 
-  .controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-  }
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
 
-  #monthLabel {
-    flex: 1;
-    text-align: center;
-    font-size: 16px;
-    font-weight: bold;
-  }
+    #monthLabel {
+      flex: 1;
+      text-align: center;
+      font-size: 16px;
+      font-weight: bold;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-  .calendar {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 4px;
-  }
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
 
-  .day {
-    padding: 10px 0;
-    text-align: center;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-    user-select: none;
-    font-size: 14px;
-    background-color: white;
-  }
-
-  .day.selected {
-    background-color: #4caf50;
-    color: white;
-    font-weight: bold;
-  }
-
-  .slots {
-    display: none;
-    margin-top: 10px;
-  }
-
-  .slot-btn {
-    display: block;
-    width: 100%;
-    margin: 4px 0;
-    padding: 10px 0;
-    border: 1px solid #4caf50;
-    border-radius: 5px;
-    background-color: white;
-    cursor: pointer;
-    font-size: 16px;
-    text-align: center;
-  }
-
-  .slot-btn.selected {
-    background-color: #4caf50;
-    color: white;
-    font-weight: bold;
-  }
-
-  #saveSlots {
-    margin-top: 10px;
-    width: 100%;
-    padding: 12px;
-    font-size: 16px;
-    background-color: #2196f3;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-
-  #saveSlots:hover {
-    background-color: #1976d2;
-  }
-
-  @media (max-width: 480px) {
     .day {
-      font-size: 12px;
-      padding: 8px 0;
+      padding: 10px 0;
+      text-align: center;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 14px;
+      background-color: white;
     }
+
+    .day.selected {
+      background-color: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+
+    .slots {
+      display: none;
+      margin-top: 10px;
+    }
+
     .slot-btn {
-      font-size: 14px;
-      padding: 8px 0;
+      display: block;
+      width: 100%;
+      margin: 4px 0;
+      padding: 10px 0;
+      border: 1px solid #4caf50;
+      border-radius: 5px;
+      background-color: white;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: center;
     }
+
+    .slot-btn.selected {
+      background-color: #4caf50;
+      color: white;
+      font-weight: bold;
+    }
+
     #saveSlots {
-      font-size: 14px;
-      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
     }
-  }
-</style>
+
+    #saveSlots:hover {
+      background-color: #1976d2;
+    }
+
+    @media (max-width: 480px) {
+      .day {
+        font-size: 12px;
+        padding: 8px 0;
+      }
+      .slot-btn {
+        font-size: 14px;
+        padding: 8px 0;
+      }
+      #saveSlots {
+        font-size: 14px;
+        padding: 10px;
+      }
+    }
+  </style>
 </head>
 <body>
 
@@ -121,6 +125,9 @@
 </div>
 
 <script>
+const tg = window.Telegram.WebApp;
+tg.ready();  // ✅ Обязательно инициализация
+
 const calendarEl = document.getElementById("calendar");
 const monthLabel = document.getElementById("monthLabel");
 const slotsEl = document.getElementById("slots");
@@ -145,13 +152,11 @@ function renderCalendar(date) {
     const firstDay = new Date(year, month, 1).getDay();
     const lastDay = new Date(year, month + 1, 0).getDate();
 
-    // пустые элементы перед началом месяца
     for(let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++){
         const empty = document.createElement("div");
         calendarEl.appendChild(empty);
     }
 
-    // дни месяца
     for(let i = 1; i <= lastDay; i++){
         const dayEl = document.createElement("div");
         dayEl.classList.add("day");
@@ -192,14 +197,18 @@ function renderSlots(date) {
 
 saveButton.addEventListener("click", () => {
     if(!selectedDate || selectedSlots.size === 0){
-        Telegram.WebApp.showAlert("Выберите дату и хотя бы один слот!");
+        tg.showAlert("Выберите дату и хотя бы один слот!");
         return;
     }
     const slotsArray = Array.from(selectedSlots);
-    Telegram.WebApp.sendData(JSON.stringify({
+    const payload = JSON.stringify({
         date: selectedDate,
         times: slotsArray
-    }));
+    });
+
+    console.log("Отправляем данные в Telegram:", payload);
+    tg.sendData(payload);  // ✅ Отправка в бота
+    tg.close();            // ✅ Закрыть WebApp после отправки
 });
 
 document.getElementById("prevMonth").addEventListener("click", () => {
