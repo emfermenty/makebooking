@@ -124,6 +124,9 @@
 </div>
 
 <script>
+let tg = window.Telegram.WebApp;
+tg.ready(); // Инициализация WebApp
+
 const calendarEl = document.getElementById("calendar");
 const monthLabel = document.getElementById("monthLabel");
 const slotsEl = document.getElementById("slots");
@@ -163,6 +166,7 @@ function renderCalendar(date) {
             selectedDate = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
             selectedSlots.clear();
             renderSlots(selectedDate);
+            console.log("Выбрана дата:", selectedDate);
         });
         calendarEl.appendChild(dayEl);
     }
@@ -185,6 +189,7 @@ function renderSlots(date) {
                 selectedSlots.add(timeText);
                 slotBtn.classList.add("selected");
             }
+            console.log("Выбраны слоты:", Array.from(selectedSlots));
         });
 
         slotsContainer.appendChild(slotBtn);
@@ -193,15 +198,16 @@ function renderSlots(date) {
 
 saveButton.addEventListener("click", () => {
     if(!selectedDate || selectedSlots.size === 0){
-        alert("Выберите дату и хотя бы один слот!");
+        tg.showAlert("Выберите дату и хотя бы один слот!");
         return;
     }
     const slotsArray = Array.from(selectedSlots);
-    // Отправка данных в бот через Telegram WebApp
-    Telegram.WebApp.sendData(JSON.stringify({
+    console.log("Отправка данных в Telegram:", {date: selectedDate, times: slotsArray});
+    tg.sendData(JSON.stringify({
         date: selectedDate,
         times: slotsArray
     }));
+    tg.close(); // Закрыть WebApp после отправки
 });
 
 document.getElementById("prevMonth").addEventListener("click", () => {
