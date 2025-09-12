@@ -24,9 +24,6 @@
     text-align: center;
     font-size: 16px;
     font-weight: bold;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .calendar {
@@ -124,9 +121,6 @@
 </div>
 
 <script>
-let tg = window.Telegram.WebApp;
-tg.ready(); // Инициализация WebApp
-
 const calendarEl = document.getElementById("calendar");
 const monthLabel = document.getElementById("monthLabel");
 const slotsEl = document.getElementById("slots");
@@ -151,11 +145,13 @@ function renderCalendar(date) {
     const firstDay = new Date(year, month, 1).getDay();
     const lastDay = new Date(year, month + 1, 0).getDate();
 
+    // пустые элементы перед началом месяца
     for(let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++){
         const empty = document.createElement("div");
         calendarEl.appendChild(empty);
     }
 
+    // дни месяца
     for(let i = 1; i <= lastDay; i++){
         const dayEl = document.createElement("div");
         dayEl.classList.add("day");
@@ -166,7 +162,6 @@ function renderCalendar(date) {
             selectedDate = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
             selectedSlots.clear();
             renderSlots(selectedDate);
-            console.log("Выбрана дата:", selectedDate);
         });
         calendarEl.appendChild(dayEl);
     }
@@ -189,7 +184,6 @@ function renderSlots(date) {
                 selectedSlots.add(timeText);
                 slotBtn.classList.add("selected");
             }
-            console.log("Выбраны слоты:", Array.from(selectedSlots));
         });
 
         slotsContainer.appendChild(slotBtn);
@@ -198,16 +192,14 @@ function renderSlots(date) {
 
 saveButton.addEventListener("click", () => {
     if(!selectedDate || selectedSlots.size === 0){
-        tg.showAlert("Выберите дату и хотя бы один слот!");
+        Telegram.WebApp.showAlert("Выберите дату и хотя бы один слот!");
         return;
     }
     const slotsArray = Array.from(selectedSlots);
-    console.log("Отправка данных в Telegram:", {date: selectedDate, times: slotsArray});
-    tg.sendData(JSON.stringify({
+    Telegram.WebApp.sendData(JSON.stringify({
         date: selectedDate,
         times: slotsArray
     }));
-    tg.close(); // Закрыть WebApp после отправки
 });
 
 document.getElementById("prevMonth").addEventListener("click", () => {
