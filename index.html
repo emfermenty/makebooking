@@ -197,8 +197,11 @@ saveButton.addEventListener("click", () => {
         return;
     }
     const slotsArray = Array.from(selectedSlots);
-    alert(`Созданы слоты на ${selectedDate}: ${slotsArray.join(", ")}`);
-    // TODO: fetch на сервер для сохранения слотов
+    // Отправка данных в бот через Telegram WebApp
+    Telegram.WebApp.sendData(JSON.stringify({
+        date: selectedDate,
+        times: slotsArray
+    }));
 });
 
 document.getElementById("prevMonth").addEventListener("click", () => {
