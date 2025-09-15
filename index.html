@@ -77,6 +77,28 @@
       font-weight: bold;
     }
 
+    .slot-btn.disabled {
+      cursor: not-allowed;
+    }
+
+    .slot-btn.opened {
+      background-color: #e0e0e0;
+      color: #999;
+      border-color: #ccc;
+    }
+
+    .slot-btn.waiting {
+      background-color: #f08080;
+      color: white;
+      border-color: #f08080;
+    }
+
+    .slot-btn.confirmed {
+      background-color: #ffa500;
+      color: white;
+      border-color: #ffa500;
+    }
+
     #saveSlots {
       margin-top: 10px;
       width: 100%;
@@ -126,7 +148,7 @@
 
 <script>
 const tg = window.Telegram.WebApp;
-tg.ready();  // ✅ Обязательно инициализация
+tg.ready();
 
 const calendarEl = document.getElementById("calendar");
 const monthLabel = document.getElementById("monthLabel");
@@ -153,43 +175,88 @@ function renderCalendar(date) {
     const lastDay = new Date(year, month + 1, 0).getDate();
 
     for(let i = 0; i < (firstDay === 0 ? 6 : firstDay - 1); i++){
-        const empty = document.createElement("div");
-        calendarEl.appendChild(empty);
+        calendarEl.appendChild(document.createElement("div"));
     }
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
 
     for(let i = 1; i <= lastDay; i++){
         const dayEl = document.createElement("div");
         dayEl.classList.add("day");
         dayEl.innerText = i;
-        dayEl.addEventListener("click", () => {
-            document.querySelectorAll(".day").forEach(d => d.classList.remove("selected"));
-            dayEl.classList.add("selected");
-            selectedDate = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
-            selectedSlots.clear();
-            renderSlots(selectedDate);
-        });
+
+        const dayDate = new Date(year, month, i);
+
+        if(dayDate < today) {
+            dayEl.style.backgroundColor = "#e0e0e0";
+            dayEl.style.color = "#999";
+            dayEl.style.cursor = "not-allowed";
+        } else {
+            dayEl.addEventListener("click", () => {
+                document.querySelectorAll(".day").forEach(d => d.classList.remove("selected"));
+                dayEl.classList.add("selected");
+                selectedDate = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                selectedSlots.clear();
+                renderSlots(selectedDate, dayDate);
+            });
+        }
+
         calendarEl.appendChild(dayEl);
     }
 }
 
-function renderSlots(date) {
+async function renderSlots(date, dayDate) {
     slotsEl.style.display = 'block';
     slotsContainer.innerHTML = '';
+    const now = new Date();
+
+    let response;
+    try {
+        response = await fetch('https://antohabeuty.store/api/books/slots/');
+        response = await response.json();
+    } catch (err) {
+        console.error('Ошибка получения слотов:', err);
+        return;
+    }
+
+    const slotsForDay = response.filter(slot => slot.slot_datetime.startsWith(date));
+
     for(let hour=9; hour<=18; hour++){
         const slotBtn = document.createElement("button");
         slotBtn.classList.add("slot-btn");
         const timeText = `${String(hour).padStart(2,'0')}:00`;
         slotBtn.innerText = timeText;
 
-        slotBtn.addEventListener("click", () => {
-            if(selectedSlots.has(timeText)) {
-                selectedSlots.delete(timeText);
-                slotBtn.classList.remove("selected");
-            } else {
-                selectedSlots.add(timeText);
-                slotBtn.classList.add("selected");
+        const slotData = slotsForDay.find(s => s.slot_datetime.endsWith(`T${timeText}:00`));
+
+        if(slotData) {
+            if(slotData.status === "Ожидание") {
+                slotBtn.classList.add("waiting");
+                slotBtn.innerText = timeText + " — занято, ожидание подтверждения";
+            } else if(slotData.status === "Подтверждено") {
+                slotBtn.classList.add("confirmed");
+                slotBtn.innerText = timeText + " — занято, уже подтвердили";
+            } else if(slotData.status === "Открыто") {
+                slotBtn.classList.add("opened");
+                slotBtn.innerText = timeText + " — запись уже открыта";
             }
-        });
+        } else {
+            if(dayDate.toDateString() === now.toDateString() && hour <= now.getHours()) {
+                slotBtn.classList.add("opened");
+                slotBtn.innerText = timeText + " — запись уже открыта";
+            } else {
+                slotBtn.addEventListener("click", () => {
+                    if(selectedSlots.has(timeText)) {
+                        selectedSlots.delete(timeText);
+                        slotBtn.classList.remove("selected");
+                    } else {
+                        selectedSlots.add(timeText);
+                        slotBtn.classList.add("selected");
+                    }
+                });
+            }
+        }
 
         slotsContainer.appendChild(slotBtn);
     }
@@ -207,8 +274,8 @@ saveButton.addEventListener("click", () => {
     });
 
     console.log("Отправляем данные в Telegram:", payload);
-    tg.sendData(payload);  // ✅ Отправка в бота
-    tg.close();            // ✅ Закрыть WebApp после отправки
+    tg.sendData(payload);
+    tg.close();
 });
 
 document.getElementById("prevMonth").addEventListener("click", () => {
