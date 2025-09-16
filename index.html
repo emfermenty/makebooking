@@ -269,6 +269,7 @@ saveButton.addEventListener("click", () => {
     }
     const slotsArray = Array.from(selectedSlots);
     const payload = JSON.stringify({
+        action: "admin_create_slots",
         date: selectedDate,
         times: slotsArray
     });
