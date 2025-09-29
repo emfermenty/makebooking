@@ -213,7 +213,7 @@ async function renderSlots(date, dayDate) {
 
     let response;
     try {
-        response = await fetch('https://antohabeuty.store/api/books/slots/');
+        response = await fetch('https://antohabeuty.store/api/api/books/slots/');
         response = await response.json();
     } catch (err) {
         console.error('Ошибка получения слотов:', err);
