@@ -1,0 +1,116 @@
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+#monthLabel {
+  flex: 1;
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.day {
+  padding: 10px 0;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  background-color: white;
+}
+
+.day.selected {
+  background-color: #4caf50;
+  color: white;
+  font-weight: bold;
+}
+
+.slots {
+  display: none;
+  margin-top: 10px;
+}
+
+.slot-btn {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  padding: 10px 0;
+  border: 1px solid #4caf50;
+  border-radius: 5px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 16px;
+  text-align: center;
+}
+
+.slot-btn.selected {
+  background-color: #4caf50;
+  color: white;
+  font-weight: bold;
+}
+
+.slot-btn.disabled {
+  cursor: not-allowed;
+}
+
+.slot-btn.opened {
+  background-color: #e0e0e0;
+  color: #999;
+  border-color: #ccc;
+}
+
+.slot-btn.waiting {
+  background-color: #f08080;
+  color: white;
+  border-color: #f08080;
+}
+
+.slot-btn.confirmed {
+  background-color: #ffa500;
+  color: white;
+  border-color: #ffa500;
+}
+
+#saveSlots {
+  margin-top: 10px;
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#saveSlots:hover {
+  background-color: #1976d2;
+}
+
+@media (max-width: 480px) {
+  .day {
+    font-size: 12px;
+    padding: 8px 0;
+  }
+  .slot-btn {
+    font-size: 14px;
+    padding: 8px 0;
+  }
+  #saveSlots {
+    font-size: 14px;
+    padding: 10px;
+  }
+}

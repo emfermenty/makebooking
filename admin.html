@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MiniApp Admin</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="css/admin-styles.css">
+</head>
+<body>
+  <div id="content"></div>
+
+  <nav class="bottom-nav">
+    <button data-page="schedule" class="active">
+      <span class="icon">📅</span>
+      <span>Расписание</span>
+    </button>
+    <button data-page="open-booking">
+      <span class="icon">➕</span>
+      <span>Открыть запись</span>
+    </button>
+    <button data-page="management">
+      <span class="icon">⚙️</span>
+      <span>Управление</span>
+    </button>
+  </nav>
+
+  <script type="module" src="./admin-app.js"></script>
+</body>
+</html>
