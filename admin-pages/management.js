@@ -100,8 +100,8 @@ function initializeManagement() {
   let services = [];
 
   // Базовый URL API
-  const API_BASE = 'http://localhost:8000/api';
-  // Или для продакшена: const API_BASE = 'https://antohabeuty.store/api';
+  //const API_BASE = 'http://localhost:8000/api';
+  const API_BASE = 'https://antohabeuty.store/api';
 
   // Загрузка данных
   loadCabinets();
