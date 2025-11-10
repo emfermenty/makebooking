@@ -27,6 +27,7 @@ function initializeSchedule() {
   const nextWeekBtn = document.getElementById('nextWeek');
 
   let currentDate = new Date();
+  let mastersCache = {}; // Кэш для данных о мастерах
 
   function getWeekDates(date) {
     const start = new Date(date);
@@ -52,6 +53,54 @@ function initializeSchedule() {
     return `${formatDate(start)} - ${formatDate(end)}`;
   }
 
+  // Функция для получения данных о мастере
+  async function getMasterInfo(masterId) {
+    // Проверяем кэш
+    if (mastersCache[masterId]) {
+      return mastersCache[masterId];
+    }
+
+    try {
+      const response = await fetch(`https://antohabeuty.store/api/api/masters/${masterId}`);
+      if (!response.ok) {
+        throw new Error('Мастер не найден');
+      }
+      const master = await response.json();
+      
+      // Сохраняем в кэш
+      mastersCache[masterId] = master;
+      return master;
+    } catch (error) {
+      console.error(`Ошибка загрузки данных мастера ${masterId}:`, error);
+      return {
+        id: masterId,
+        name: `Мастер ${masterId}`,
+        specialization: 'Неизвестно',
+        description: 'Данные не загружены'
+      };
+    }
+  }
+
+  // Функция для группировки слотов по времени
+  function groupSlotsByTime(slots) {
+    const grouped = {};
+    
+    slots.forEach(slot => {
+      const dateTime = slot.slot_datetime;
+      const time = dateTime.split('T')[1].substring(0, 5);
+      const date = dateTime.split('T')[0];
+      const key = `${date}_${time}`;
+      
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      
+      grouped[key].push(slot);
+    });
+    
+    return grouped;
+  }
+
   async function renderWeekSchedule(week) {
     weekLabel.textContent = formatWeekLabel(week);
     scheduleContainer.innerHTML = '<div class="loading">Загрузка расписания...</div>';
@@ -64,8 +113,14 @@ function initializeSchedule() {
       
       week.forEach(day => {
         const dayStr = day.toISOString().split('T')[0];
+        
+        // Получаем все слоты для этого дня
         const daySlots = slots.filter(slot => slot.slot_datetime.startsWith(dayStr));
         
+        // Группируем слоты по времени
+        const groupedSlots = groupSlotsByTime(daySlots);
+        const timeKeys = Object.keys(groupedSlots).sort();
+
         scheduleHTML += `
           <div class="schedule-day">
             <div class="day-header">
@@ -73,25 +128,43 @@ function initializeSchedule() {
               <span class="day-name">${day.toLocaleDateString('ru-RU', { weekday: 'short' })}</span>
             </div>
             <div class="day-slots">
-              ${daySlots.length > 0 ? 
-                daySlots.map(slot => {
-                  const time = slot.slot_datetime.split('T')[1].substring(0, 5);
-                  const status = slot.status.toLowerCase();
-                  const telegramId = slot.telegram_id;
-                  const isClickable = telegramId && (slot.status === "Ожидание" || slot.status === "Подтверждено");
+              ${timeKeys.length > 0 ? 
+                timeKeys.map(timeKey => {
+                  const time = timeKey.split('_')[1];
+                  const timeSlots = groupedSlots[timeKey];
                   
                   return `
-                  <div class="slot-item ${status}" data-telegram-id="${telegramId || ''}" data-clickable="${isClickable}">
-                    <span class="slot-time">${time}</span>
-                    <span class="slot-status">${slot.status}</span>
-                    <div class="client-info">
-                      ${telegramId ? `
-                        <span class="client-name">ID: ${telegramId}</span>
-                        ${isClickable ? '<span class="telegram-id">👆 Нажмите для анамнеза</span>' : ''}
-                      ` : '<span class="client-name">Свободно</span>'}
+                    <div class="time-slot-group">
+                      <div class="time-header">${time}</div>
+                      <div class="masters-slots">
+                        ${timeSlots.map(slot => {
+                          const status = slot.status.toLowerCase();
+                          const telegramId = slot.telegram_id;
+                          const isClickable = telegramId && (slot.status === "Ожидание" || slot.status === "Подтверждено");
+                          
+                          return `
+                          <div class="slot-item ${status}" 
+                               data-telegram-id="${telegramId || ''}" 
+                               data-master-id="${slot.master_id}"
+                               data-clickable="${isClickable}">
+                            <div class="slot-master-info">
+                              <span class="master-name">Мастер ${slot.master_id}</span>
+                            </div>
+                            <div class="slot-content">
+                              <span class="slot-status">${slot.status}</span>
+                              <div class="client-info">
+                                ${telegramId ? `
+                                  <span class="client-name">ID: ${telegramId}</span>
+                                  ${isClickable ? '<span class="telegram-id">👆 Нажмите для анамнеза</span>' : ''}
+                                ` : '<span class="client-name">Свободно</span>'}
+                              </div>
+                            </div>
+                          </div>
+                        `}).join('')}
+                      </div>
                     </div>
-                  </div>
-                `}).join('') : 
+                  `;
+                }).join('') : 
                 '<div class="no-slots">Нет записей</div>'
               }
             </div>
@@ -100,6 +173,9 @@ function initializeSchedule() {
       });
 
       scheduleContainer.innerHTML = scheduleHTML;
+      
+      // Загружаем и отображаем информацию о мастерах
+      await loadMastersInfo();
       
       // Добавляем обработчики кликов для слотов с анамнезом
       addSlotClickHandlers();
@@ -110,20 +186,41 @@ function initializeSchedule() {
     }
   }
 
+  // Функция для загрузки и отображения информации о мастерах
+  async function loadMastersInfo() {
+    const masterElements = document.querySelectorAll('[data-master-id]');
+    const masterIds = [...new Set(Array.from(masterElements).map(el => el.getAttribute('data-master-id')))];
+    
+    // Загружаем данные всех мастеров
+    const mastersPromises = masterIds.map(masterId => getMasterInfo(masterId));
+    const masters = await Promise.all(mastersPromises);
+    
+    // Обновляем отображение имен мастеров
+    masters.forEach(master => {
+      const masterNameElements = document.querySelectorAll(`[data-master-id="${master.id}"] .master-name`);
+      masterNameElements.forEach(element => {
+        element.textContent = master.name;
+        element.title = `${master.specialization} - ${master.description}`;
+      });
+    });
+  }
+
   function addSlotClickHandlers() {
     const slotItems = document.querySelectorAll('.slot-item[data-clickable="true"]');
     
     slotItems.forEach(slot => {
       slot.addEventListener('click', async () => {
         const telegramId = slot.getAttribute('data-telegram-id');
+        const masterId = slot.getAttribute('data-master-id');
+        
         if (telegramId) {
-          await showAnamnesis(telegramId);
+          await showAnamnesis(telegramId, masterId);
         }
       });
     });
   }
 
-  async function showAnamnesis(telegramId) {
+  async function showAnamnesis(telegramId, masterId) {
     try {
       const response = await fetch(`https://antohabeuty.store/api/api/anamnez/${telegramId}`);
       
@@ -132,6 +229,7 @@ function initializeSchedule() {
       }
       
       const anamnesis = await response.json();
+      const masterInfo = await getMasterInfo(masterId);
       
       // Создаем модальное окно
       const modal = document.createElement('div');
@@ -141,6 +239,11 @@ function initializeSchedule() {
           <div class="anamnesis-header">
             <h3>Анамнез пользователя</h3>
             <button class="anamnesis-close">&times;</button>
+          </div>
+          <div class="master-info-modal">
+            <strong>Мастер:</strong> ${masterInfo.name}<br>
+            <span class="specialization">${masterInfo.specialization}</span><br>
+            <span class="description">${masterInfo.description}</span>
           </div>
           <div class="anamnesis-info">
             ${renderAnamnesisInfo(anamnesis)}
