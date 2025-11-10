@@ -98,6 +98,7 @@ function initializeManagement() {
   let masters = [];
   let categories = [];
   let services = [];
+  let selectedCategories = []; // Массив для хранения выбранных категорий
 
   // Базовый URL API
   //const API_BASE = 'http://localhost:8000/api';
@@ -177,7 +178,7 @@ function initializeManagement() {
     try {
       let url = `${API_BASE}/services`;
       if (categoryId) {
-        url += `/${categoryId}`;
+        url = `${API_BASE}/services/${categoryId}`;
       }
       
       const response = await fetch(url);
@@ -193,6 +194,33 @@ function initializeManagement() {
     }
   }
 
+  // Функция для получения услуг по категории
+  async function getServicesByCategory(categoryId) {
+    try {
+      const response = await fetch(`${API_BASE}/services/${categoryId}`);
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Ошибка загрузки услуг категории');
+        return [];
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки услуг категории:', error);
+      return [];
+    }
+  }
+
+  // Функция для отправки данных через Telegram WebApp
+  function sendTelegramData(data) {
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.sendData(JSON.stringify(data));
+      return true;
+    } else {
+      console.error('Telegram WebApp не доступен');
+      return false;
+    }
+  }
+
   function showModal(action) {
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
@@ -203,6 +231,7 @@ function initializeManagement() {
     selectedMasterId = null;
     selectedCategoryId = null;
     selectedServiceId = null;
+    selectedCategories = []; // Сбрасываем выбранные категории
 
     switch (action) {
       case 'create-cabinet':
@@ -308,6 +337,13 @@ function initializeManagement() {
       `<option value="${cabinet.id}">${cabinet.title}</option>`
     ).join('');
 
+    const categoriesCheckboxes = categories.map(cat => 
+      `<div class="checkbox-item">
+        <input type="checkbox" id="category-${cat.id}" value="${cat.id}" class="category-checkbox">
+        <label for="category-${cat.id}">${cat.title}</label>
+      </div>`
+    ).join('');
+
     return `
       <div class="form-group">
         <label for="masterName">Имя мастера:</label>
@@ -329,8 +365,19 @@ function initializeManagement() {
         </select>
       </div>
       <div class="form-group">
+        <label>Категории услуг:</label>
+        <small class="form-hint">Выберите одну или несколько категорий. Мастеру будут автоматически присвоены все услуги из выбранных категорий.</small>
+        <div class="categories-checkbox-group" id="categoriesCheckboxGroup">
+          ${categoriesCheckboxes}
+        </div>
+      </div>
+      <div class="form-group">
         <label for="masterPhoto">Фото (URL):</label>
         <input type="text" id="masterPhoto" placeholder="Введите URL фото">
+      </div>
+      <div class="services-preview" id="servicesPreview" style="display: none;">
+        <h4>Услуги, которые будут присвоены мастеру:</h4>
+        <div class="services-list-preview" id="servicesListPreview"></div>
       </div>
     `;
   }
@@ -461,10 +508,8 @@ function initializeManagement() {
   }
 
   async function handleConfirm() {
-    // Функция для показа сообщений с fallback
     const showMessage = (message) => {
       try {
-        // Пробуем использовать Telegram WebApp если доступно
         if (window.Telegram && window.Telegram.WebApp) {
           if (typeof window.Telegram.WebApp.showAlert === 'function') {
             window.Telegram.WebApp.showAlert(message);
@@ -481,7 +526,6 @@ function initializeManagement() {
           alert(message);
         }
       } catch (e) {
-        // Если Telegram метод не работает, используем alert
         alert(message);
       }
     };
@@ -545,6 +589,24 @@ function initializeManagement() {
             return;
           }
 
+          if (selectedCategories.length === 0) {
+            showMessage('Выберите хотя бы одну категорию услуг!');
+            return;
+          }
+
+          // Получаем все услуги из выбранных категорий
+          let allServiceIds = [];
+          
+          for (const categoryId of selectedCategories) {
+            const categoryServices = await getServicesByCategory(parseInt(categoryId));
+            const serviceIds = categoryServices.map(service => service.id);
+            allServiceIds = [...allServiceIds, ...serviceIds];
+          }
+          
+          // Убираем дубликаты
+          allServiceIds = [...new Set(allServiceIds)];
+
+          // Создаем мастера с привязкой услуг в одном запросе
           response = await fetch(`${API_BASE}/masters`, {
             method: 'POST',
             headers: {
@@ -555,12 +617,14 @@ function initializeManagement() {
               cabinet_id: parseInt(masterCabinet),
               specialization: masterSpecialization || null,
               description: masterDescription || null,
-              photo: masterPhoto || null
+              photo: masterPhoto || null,
+              service_ids: allServiceIds  // Передаем все ID услуг
             })
           });
           
           if (response.ok) {
-            showMessage('Мастер успешно создан!');
+            const result = await response.json();
+            showMessage(`Мастер успешно создан! Привязано услуг: ${result.assigned_services_count || allServiceIds.length}`);
             await loadMasters();
           } else {
             const errorText = await response.text();
@@ -587,7 +651,6 @@ function initializeManagement() {
               const errorData = await response.json();
               errorMessage = errorData.detail || errorMessage;
             } catch (e) {
-              // Если не удалось распарсить JSON, используем текст ответа
               const errorText = await response.text();
               errorMessage = errorText || errorMessage;
             }
@@ -604,23 +667,18 @@ function initializeManagement() {
             return;
           }
 
-          response = await fetch(`${API_BASE}/categories`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              title: categoryTitle,
-              description: categoryDescription || null
-            })
-          });
-          
-          if (response.ok) {
-            showMessage('Категория успешно создана!');
-            await loadCategories();
+          // Отправляем через Telegram WebApp вместо прямого fetch
+          const categoryData = {
+            action: "create-category",
+            title: categoryTitle,
+            description: categoryDescription || null
+          };
+
+          if (sendTelegramData(categoryData)) {
+            showMessage('Данные отправлены в Telegram!');
+            await loadCategories(); // Перезагружаем категории после успешной отправки
           } else {
-            const errorText = await response.text();
-            throw new Error(`Ошибка создания категории: ${response.status} ${errorText}`);
+            throw new Error('Не удалось отправить данные через Telegram WebApp');
           }
           break;
 
@@ -629,17 +687,18 @@ function initializeManagement() {
             showMessage('Выберите категорию для удаления!');
             return;
           }
-          
-          response = await fetch(`${API_BASE}/categories/${selectedCategoryId}`, {
-            method: 'DELETE'
-          });
-          
-          if (response.ok) {
-            showMessage('Категория успешно удалена!');
+
+          // Отправляем через Telegram WebApp
+          const deleteCategoryData = {
+            action: "delete-category",
+            category_id: selectedCategoryId
+          };
+
+          if (sendTelegramData(deleteCategoryData)) {
+            showMessage('Запрос на удаление отправлен в Telegram!');
             await loadCategories();
           } else {
-            const error = await response.json();
-            throw new Error(error.detail || `Ошибка удаления категории: ${response.status}`);
+            throw new Error('Не удалось отправить данные через Telegram WebApp');
           }
           break;
 
@@ -656,27 +715,22 @@ function initializeManagement() {
             return;
           }
 
-          response = await fetch(`${API_BASE}/services`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              title: serviceTitle,
-              description: serviceDescription || null,
-              price: parseInt(servicePrice),
-              durationMinutes: parseInt(serviceDuration),
-              category_id: parseInt(serviceCategory),
-              contraindications: serviceContraindications || null
-            })
-          });
-          
-          if (response.ok) {
-            showMessage('Услуга успешно создана!');
+          // Отправляем через Telegram WebApp
+          const serviceData = {
+            action: "create-service",
+            title: serviceTitle,
+            description: serviceDescription || null,
+            price: parseInt(servicePrice),
+            durationMinutes: parseInt(serviceDuration),
+            category_id: parseInt(serviceCategory),
+            contraindications: serviceContraindications || null
+          };
+
+          if (sendTelegramData(serviceData)) {
+            showMessage('Данные отправлены в Telegram!');
             await loadServices();
           } else {
-            const errorText = await response.text();
-            throw new Error(`Ошибка создания услуги: ${response.status} ${errorText}`);
+            throw new Error('Не удалось отправить данные через Telegram WebApp');
           }
           break;
 
@@ -685,22 +739,22 @@ function initializeManagement() {
             showMessage('Выберите услугу для удаления!');
             return;
           }
-          
-          response = await fetch(`${API_BASE}/services/${selectedServiceId}`, {
-            method: 'DELETE'
-          });
-          
-          if (response.ok) {
-            showMessage('Услуга успешно удалена!');
+
+          // Отправляем через Telegram WebApp
+          const deleteServiceData = {
+            action: "delete-service",
+            service_id: selectedServiceId
+          };
+
+          if (sendTelegramData(deleteServiceData)) {
+            showMessage('Запрос на удаление отправлен в Telegram!');
             await loadServices();
           } else {
-            const error = await response.json();
-            throw new Error(error.detail || `Ошибка удаления услуги: ${response.status}`);
+            throw new Error('Не удалось отправить данные через Telegram WebApp');
           }
           break;
       }
 
-      showMessage('Операция выполнена успешно!');
       hideModal();
       
     } catch (error) {
@@ -815,6 +869,68 @@ function initializeManagement() {
       selectedServiceId = null;
       document.getElementById('modalConfirm').disabled = true;
     }
-  });
-}
 
+    // Обработчик для чекбоксов категорий
+    if (e.target.classList.contains('category-checkbox')) {
+      const categoryId = e.target.value;
+      const isChecked = e.target.checked;
+      
+      if (isChecked) {
+        // Добавляем категорию в массив
+        if (!selectedCategories.includes(categoryId)) {
+          selectedCategories.push(categoryId);
+        }
+      } else {
+        // Удаляем категорию из массива
+        selectedCategories = selectedCategories.filter(id => id !== categoryId);
+      }
+      
+      // Обновляем предпросмотр услуг
+      await updateServicesPreview();
+    }
+  });
+
+  // Функция для обновления предпросмотра услуг
+  async function updateServicesPreview() {
+    const servicesPreview = document.getElementById('servicesPreview');
+    const servicesListPreview = document.getElementById('servicesListPreview');
+    
+    if (selectedCategories.length === 0) {
+      servicesPreview.style.display = 'none';
+      return;
+    }
+    
+    servicesListPreview.innerHTML = '<p class="loading">Загрузка услуг...</p>';
+    servicesPreview.style.display = 'block';
+    
+    // Получаем все услуги из выбранных категорий
+    let allServices = [];
+    
+    for (const categoryId of selectedCategories) {
+      const categoryServices = await getServicesByCategory(parseInt(categoryId));
+      // Добавляем информацию о категории к каждой услуге
+      const servicesWithCategory = categoryServices.map(service => ({
+        ...service,
+        categoryName: categories.find(cat => cat.id === parseInt(categoryId))?.title || 'Неизвестно'
+      }));
+      allServices = [...allServices, ...servicesWithCategory];
+    }
+    
+    if (allServices.length === 0) {
+      servicesListPreview.innerHTML = '<p class="no-services">В выбранных категориях пока нет услуг</p>';
+    } else {
+      const servicesHTML = allServices.map(service => `
+        <div class="service-preview-item">
+          <div><strong>${service.title}</strong></div>
+          <div class="service-preview-details">
+            <small>Категория: ${service.categoryName}</small>
+            <small>Цена: ${service.price} руб.</small>
+            <small>Длительность: ${service.durationMinutes} мин.</small>
+          </div>
+        </div>
+      `).join('');
+      
+      servicesListPreview.innerHTML = servicesHTML;
+    }
+  }
+}
