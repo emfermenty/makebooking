@@ -77,7 +77,7 @@ function initializeOpenBooking() {
 
   // Базовый URL API
   //const API_BASE = 'http://localhost:8000/api';
-  const API_BASE = 'https://antohabeuty.store/api/api';
+  const API_BASE = 'https://antohabeuty.store/api';
 
   const monthNames = [
     "Январь","Февраль","Март","Апрель","Май","Июнь",
@@ -429,4 +429,3 @@ function initializeOpenBooking() {
   // Инициализация календаря
   renderCalendar(currentDate);
 }
-
