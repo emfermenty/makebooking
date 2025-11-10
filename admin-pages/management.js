@@ -101,7 +101,7 @@ function initializeManagement() {
 
   // Базовый URL API
   //const API_BASE = 'http://localhost:8000/api';
-  const API_BASE = 'https://antohabeuty.store/api';
+  const API_BASE = 'https://antohabeuty.store/api/api';
 
   // Загрузка данных
   loadCabinets();
@@ -817,3 +817,4 @@ function initializeManagement() {
     }
   });
 }
+
