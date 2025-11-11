@@ -99,6 +99,7 @@ function initializeManagement() {
   let categories = [];
   let services = [];
   let selectedCategories = []; // Массив для хранения выбранных категорий
+  let selectedMastersForService = []; // Массив для хранения выбранных мастеров для услуги
 
   // Базовый URL API
   //const API_BASE = 'http://localhost:8000/api';
@@ -107,6 +108,7 @@ function initializeManagement() {
   // Загрузка данных
   loadCabinets();
   loadCategories();
+  loadMasters();
 
   // Обработчики кнопок действий
   document.querySelectorAll('.action-btn').forEach(btn => {
@@ -232,6 +234,7 @@ function initializeManagement() {
     selectedCategoryId = null;
     selectedServiceId = null;
     selectedCategories = []; // Сбрасываем выбранные категории
+    selectedMastersForService = []; // Сбрасываем выбранных мастеров
 
     switch (action) {
       case 'create-cabinet':
@@ -426,12 +429,12 @@ function initializeManagement() {
       return '<p>Нет доступных категорий</p>';
     }
 
-    const categoriesHTML = categories.map(cat => `
-      <div class="category-item" data-id="${cat.id}">
+    const categoriesHTML = categories.map(cat => 
+      `<div class="category-item" data-id="${cat.id}">
         <strong>${cat.title}</strong>
         ${cat.description ? `<br><small>${cat.description}</small>` : ''}
-      </div>
-    `).join('');
+      </div>`
+    ).join('');
 
     return `
       <p>Выберите категорию для удаления:</p>
@@ -448,6 +451,13 @@ function initializeManagement() {
 
     const categoriesOptions = categories.map(cat => 
       `<option value="${cat.id}">${cat.title}</option>`
+    ).join('');
+
+    const mastersCheckboxes = masters.map(master => 
+      `<div class="checkbox-item">
+        <input type="checkbox" id="master-${master.id}" value="${master.id}" class="master-checkbox">
+        <label for="master-${master.id}">${master.name}</label>
+      </div>`
     ).join('');
 
     return `
@@ -475,8 +485,11 @@ function initializeManagement() {
         </select>
       </div>
       <div class="form-group">
-        <label for="serviceContraindications">Противопоказания:</label>
-        <textarea id="serviceContraindications" placeholder="Введите противопоказания"></textarea>
+        <label>Мастера для услуги:</label>
+        <small class="form-hint">Выберите одного или нескольких мастеров, которые будут предоставлять эту услугу</small>
+        <div class="masters-checkbox-group" id="mastersCheckboxGroup">
+          ${mastersCheckboxes}
+        </div>
       </div>
     `;
   }
@@ -708,7 +721,6 @@ function initializeManagement() {
           const servicePrice = document.getElementById('servicePrice').value;
           const serviceDuration = document.getElementById('serviceDuration').value;
           const serviceCategory = document.getElementById('serviceCategory').value;
-          const serviceContraindications = document.getElementById('serviceContraindications').value;
 
           if (!serviceTitle || !servicePrice || !serviceDuration || !serviceCategory) {
             showMessage('Заполните все обязательные поля!');
@@ -723,7 +735,7 @@ function initializeManagement() {
             price: parseInt(servicePrice),
             durationMinutes: parseInt(serviceDuration),
             category_id: parseInt(serviceCategory),
-            contraindications: serviceContraindications || null
+            master_ids: selectedMastersForService // Передаем выбранных мастеров
           };
 
           if (sendTelegramData(serviceData)) {
@@ -824,9 +836,6 @@ function initializeManagement() {
         const mastersHTML = masters.map(master => `
           <div class="master-item" data-id="${master.id}">
             <div><strong>${master.name}</strong></div>
-            <div class="master-details">
-              <small>Специализация: ${master.specialization || 'не указана'}</small>
-            </div>
           </div>
         `).join('');
         
@@ -887,6 +896,22 @@ function initializeManagement() {
       
       // Обновляем предпросмотр услуг
       await updateServicesPreview();
+    }
+
+    // Обработчик для чекбоксов мастеров при создании услуги
+    if (e.target.classList.contains('master-checkbox')) {
+      const masterId = e.target.value;
+      const isChecked = e.target.checked;
+      
+      if (isChecked) {
+        // Добавляем мастера в массив
+        if (!selectedMastersForService.includes(parseInt(masterId))) {
+          selectedMastersForService.push(parseInt(masterId));
+        }
+      } else {
+        // Удаляем мастера из массива
+        selectedMastersForService = selectedMastersForService.filter(id => id !== parseInt(masterId));
+      }
     }
   });
 
