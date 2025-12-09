@@ -42,7 +42,7 @@ export function renderManagement(container) {
         <div class="action-buttons">
           <button class="action-btn" data-action="create-category">
             <span class="icon">➕</span>
-            Создать категориу
+            Создать категорию
           </button>
           <button class="action-btn" data-action="delete-category">
             <span class="icon">🗑️</span>
@@ -102,7 +102,6 @@ function initializeManagement() {
   let selectedMastersForService = []; // Массив для хранения выбранных мастеров для услуги
 
   // Базовый URL API
-  //const API_BASE = 'http://localhost:8000/api';
   const API_BASE = 'https://antohabeuty.store/api/api';
 
   // Загрузка данных
@@ -358,7 +357,7 @@ function initializeManagement() {
       </div>
       <div class="form-group">
         <label for="masterDescription">Описание:</label>
-        <textarea id="masterDescription" placeholder="Введите описание"></textarea>
+        <textarea id="masterDescription" placeholder="Введите описание" rows="2"></textarea>
       </div>
       <div class="form-group">
         <label for="masterCabinet">Кабинет:</label>
@@ -369,17 +368,13 @@ function initializeManagement() {
       </div>
       <div class="form-group">
         <label>Категории услуг:</label>
-        <small class="form-hint">Выберите одну или несколько категорий. Мастеру будут автоматически присвоены все услуги из выбранных категорий.</small>
+        <small class="form-hint">Мастеру будут присвоены все услуги из выбранных категорий</small>
         <div class="categories-checkbox-group" id="categoriesCheckboxGroup">
           ${categoriesCheckboxes}
         </div>
       </div>
-      <div class="form-group">
-        <label for="masterPhoto">Фото (URL):</label>
-        <input type="text" id="masterPhoto" placeholder="Введите URL фото">
-      </div>
       <div class="services-preview" id="servicesPreview" style="display: none;">
-        <h4>Услуги, которые будут присвоены мастеру:</h4>
+        <h4>Услуги мастера:</h4>
         <div class="services-list-preview" id="servicesListPreview"></div>
       </div>
     `;
@@ -419,7 +414,7 @@ function initializeManagement() {
       </div>
       <div class="form-group">
         <label for="categoryDescription">Описание:</label>
-        <textarea id="categoryDescription" placeholder="Введите описание"></textarea>
+        <textarea id="categoryDescription" placeholder="Введите описание" rows="2"></textarea>
       </div>
     `;
   }
@@ -467,15 +462,19 @@ function initializeManagement() {
       </div>
       <div class="form-group">
         <label for="serviceDescription">Описание:</label>
-        <textarea id="serviceDescription" placeholder="Введите описание"></textarea>
+        <textarea id="serviceDescription" placeholder="Введите описание" rows="2"></textarea>
       </div>
       <div class="form-group">
-        <label for="servicePrice">Цена (руб):</label>
-        <input type="number" id="servicePrice" placeholder="Введите цену" required min="0">
-      </div>
-      <div class="form-group">
-        <label for="serviceDuration">Длительность (минуты):</label>
-        <input type="number" id="serviceDuration" placeholder="Введите длительность" required min="1">
+        <div class="form-row">
+          <div class="form-col">
+            <label for="servicePrice">Цена (руб):</label>
+            <input type="number" id="servicePrice" placeholder="Цена" required min="0">
+          </div>
+          <div class="form-col">
+            <label for="serviceDuration">Длительность (мин):</label>
+            <input type="number" id="serviceDuration" placeholder="Мин" required min="1">
+          </div>
+        </div>
       </div>
       <div class="form-group">
         <label for="serviceCategory">Категория:</label>
@@ -485,9 +484,9 @@ function initializeManagement() {
         </select>
       </div>
       <div class="form-group">
-        <label>Мастера для услуги:</label>
-        <small class="form-hint">Выберите одного или нескольких мастеров, которые будут предоставлять эту услугу</small>
-        <div class="masters-checkbox-group" id="mastersCheckboxGroup">
+        <label>Мастера:</label>
+        <small class="form-hint">Выберите мастеров для этой услуги</small>
+        <div class="categories-checkbox-group" id="mastersCheckboxGroup">
           ${mastersCheckboxes}
         </div>
       </div>
@@ -595,7 +594,6 @@ function initializeManagement() {
           const masterSpecialization = document.getElementById('masterSpecialization').value;
           const masterDescription = document.getElementById('masterDescription').value;
           const masterCabinet = document.getElementById('masterCabinet').value;
-          const masterPhoto = document.getElementById('masterPhoto').value;
 
           if (!masterName || !masterCabinet) {
             showMessage('Заполните обязательные поля!');
@@ -630,7 +628,6 @@ function initializeManagement() {
               cabinet_id: parseInt(masterCabinet),
               specialization: masterSpecialization || null,
               description: masterDescription || null,
-              photo: masterPhoto || null,
               service_ids: allServiceIds  // Передаем все ID услуг
             })
           });
