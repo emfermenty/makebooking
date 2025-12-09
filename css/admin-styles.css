@@ -1,4 +1,18 @@
-/* Основные стили навигации */
+body {
+  background-color: rgb(223, 216, 216);
+  margin: 0;
+  min-height: 100vh;
+}
+
+#content {
+  background-color: transparent;
+}
+
+.page {
+  background-color: transparent;
+}
+
+/* Остальные стили остаются без изменений */
 .bottom-nav {
   position: fixed;
   bottom: 0;
@@ -34,7 +48,6 @@
   margin-bottom: 4px;
 }
 
-/* Основной контент с отступом для навигации */
 #content {
   padding-bottom: 70px;
 }
@@ -43,7 +56,6 @@
   padding: 15px;
 }
 
-/* Общие стили для кнопок */
 .btn-primary {
   padding: 12px;
   background: #4caf50;
@@ -64,7 +76,6 @@
   font-size: 16px;
 }
 
-/* Стили для форм */
 .form-group {
   margin-bottom: 15px;
 }
@@ -92,7 +103,6 @@
   min-height: 80px;
 }
 
-/* Адаптивность */
 @media (max-width: 480px) {
   .page {
     padding: 10px;
