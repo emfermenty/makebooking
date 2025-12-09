@@ -1,5 +1,5 @@
 .management-section {
-  background: white;
+  background: gray;
   padding: 20px;
   margin-bottom: 20px;
   border-radius: 10px;
@@ -288,4 +288,5 @@
   flex: 1;
   cursor: pointer;
   margin: 0;
+
 }
