@@ -1,3 +1,25 @@
+/* ФОН ВСЕЙ СТРАНИЦЫ */
+body {
+  background-color: rgb(223, 216, 216) !important;
+  margin: 0;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: background-color 0.3s ease;
+}
+
+/* ОСНОВНОЙ КОНТЕНТ */
+#content {
+  background-color: transparent;
+  padding-bottom: 70px;
+  min-height: calc(100vh - 70px);
+}
+
+.page {
+  padding: 15px;
+  background-color: transparent;
+}
+
+/* СЕКЦИИ УПРАВЛЕНИЯ */
 .management-section {
   background: white;
   padding: 20px;
@@ -10,6 +32,7 @@
   margin-top: 0;
   margin-bottom: 15px;
   color: #333;
+  font-size: 18px;
 }
 
 .action-buttons {
@@ -29,6 +52,7 @@
   cursor: pointer;
   transition: all 0.3s ease;
   font-size: 14px;
+  min-height: 70px;
 }
 
 .action-btn:hover {
@@ -41,7 +65,7 @@
   margin-bottom: 8px;
 }
 
-/* Модальные окна */
+/* МОДАЛЬНЫЕ ОКНА */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -77,6 +101,7 @@
 .modal-header h3 {
   margin: 0;
   color: #333;
+  font-size: 18px;
 }
 
 .modal-close {
@@ -98,18 +123,78 @@
   border-top: 1px solid #e0e0e0;
 }
 
+/* ФОРМЫ */
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.form-col {
+  flex: 1;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-col label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea,
+.form-col input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: white;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.form-hint {
+  color: #666;
+  font-size: 12px;
+  margin-top: 4px;
+  display: block;
+  line-height: 1.4;
+}
+
+/* СПИСКИ */
 .categories-list {
   max-height: 200px;
   overflow-y: auto;
   border: 1px solid #ddd;
   border-radius: 6px;
   padding: 10px;
+  background: white;
 }
 
 .category-item {
-  padding: 10px;
+  padding: 12px;
   border-bottom: 1px solid #eee;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .category-item:last-child {
@@ -125,21 +210,153 @@
   border-left: 3px solid #2196f3;
 }
 
-@media (max-width: 480px) {
-  .action-buttons {
-    grid-template-columns: 1fr;
-  }
-  
-  .modal {
-    margin: 10px;
-  }
-  
-  .management-section {
-    padding: 15px;
-  }
+/* ЧЕКБОКСЫ */
+.categories-checkbox-group {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 8px;
+  background: #fafafa;
+  margin-top: 8px;
 }
 
-.no-services, .loading {
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 8px;
+  margin-bottom: 6px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+  transition: all 0.2s ease;
+  position: relative;
+  min-height: 44px;
+}
+
+.checkbox-item:last-child {
+  margin-bottom: 0;
+}
+
+.checkbox-item:hover {
+  background: #f9f9f9;
+}
+
+.checkbox-item input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  margin: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+
+/* Стилизованный чекбокс */
+.checkbox-item label {
+  flex: 1;
+  cursor: pointer;
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+  padding-left: 32px;
+  position: relative;
+  display: block;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Кастомный чекбокс */
+.checkbox-item label::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.checkbox-item label::after {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: 4px;
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+/* Состояние выбранного чекбокса */
+.checkbox-item input[type="checkbox"]:checked + label::before {
+  background: #4caf50;
+  border-color: #4caf50;
+}
+
+.checkbox-item input[type="checkbox"]:checked + label::after {
+  opacity: 1;
+}
+
+/* ПРЕДПРОСМОТР УСЛУГ */
+.services-preview {
+  background: #f8f9fa;
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 15px;
+  border-left: 4px solid #007bff;
+}
+
+.services-preview h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+}
+
+.services-list-preview {
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.service-preview-item {
+  padding: 8px;
+  margin-bottom: 6px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  font-size: 13px;
+}
+
+.service-preview-item:last-child {
+  margin-bottom: 0;
+}
+
+.service-preview-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.service-preview-details small {
+  color: #666;
+  font-size: 10px;
+  background: #f5f5f5;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* ДРУГИЕ ЭЛЕМЕНТЫ */
+.no-services, .no-masters, .loading {
   text-align: center;
   color: #666;
   font-style: italic;
@@ -194,100 +411,162 @@
   border-color: #2196f3;
 }
 
-.master-details, .service-details {
-  margin-top: 5px;
-}
-
-.master-details small, .service-details small {
-  display: block;
-  color: #666;
-}
-
-.form-hint {
-  color: #666;
-  font-size: 12px;
-  margin-top: 4px;
-  display: block;
-}
-
-.categories-checkbox-group {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #e0e0e0;
+/* КНОПКИ */
+.btn-primary {
+  padding: 12px;
+  background: #4caf50;
+  color: white;
+  border: none;
   border-radius: 6px;
-  padding: 10px;
-  background: #fafafa;
-}
-
-.services-preview {
-  background: #f8f9fa;
-  padding: 15px;
-  border-radius: 8px;
-  margin-top: 15px;
-  border-left: 4px solid #007bff;
-}
-
-.services-preview h4 {
-  margin: 0 0 10px 0;
-  font-size: 14px;
-  color: #333;
-}
-
-.services-list-preview {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.service-preview-item {
-  padding: 8px;
-  margin-bottom: 5px;
-  background: white;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
-}
-
-.service-preview-item:last-child {
-  margin-bottom: 0;
-}
-
-.service-preview-details {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.service-preview-details small {
-  color: #666;
-  font-size: 11px;
-  background: #f5f5f5;
-  padding: 2px 6px;
-  border-radius: 3px;
-}
-
-.checkbox-item {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  margin-bottom: 5px;
-  background: white;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
-}
-
-.checkbox-item:last-child {
-  margin-bottom: 0;
-}
-
-.checkbox-item input[type="checkbox"] {
-  margin-right: 10px;
-  transform: scale(1.2);
-}
-
-.checkbox-item label {
-  flex: 1;
   cursor: pointer;
-  margin: 0;
-
+  font-size: 16px;
+  width: 100%;
+  margin-top: 10px;
+  font-weight: 600;
 }
 
+.btn-secondary {
+  padding: 12px;
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  width: 100%;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+/* СТИЛИ ДЛЯ СКРОЛЛБАРА */
+.categories-checkbox-group::-webkit-scrollbar,
+.services-list-preview::-webkit-scrollbar,
+.categories-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.categories-checkbox-group::-webkit-scrollbar-track,
+.services-list-preview::-webkit-scrollbar-track,
+.categories-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.categories-checkbox-group::-webkit-scrollbar-thumb,
+.services-list-preview::-webkit-scrollbar-thumb,
+.categories-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.categories-checkbox-group::-webkit-scrollbar-thumb:hover,
+.services-list-preview::-webkit-scrollbar-thumb:hover,
+.categories-list::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* АДАПТИВНОСТЬ */
+@media (max-width: 480px) {
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal {
+    margin: 10px;
+    max-width: calc(100% - 20px);
+  }
+  
+  .management-section {
+    padding: 15px;
+  }
+  
+  .page {
+    padding: 10px;
+  }
+  
+  .modal-body {
+    padding: 15px;
+  }
+  
+  .modal-header,
+  .modal-footer {
+    padding: 15px;
+  }
+  
+  .categories-checkbox-group {
+    max-height: 180px;
+    padding: 6px;
+  }
+  
+  .checkbox-item {
+    padding: 12px 8px;
+    margin-bottom: 8px;
+    min-height: 48px;
+  }
+  
+  .checkbox-item label {
+    font-size: 15px;
+    padding-left: 36px;
+  }
+  
+  .checkbox-item label::before {
+    width: 22px;
+    height: 22px;
+    top: -1px;
+  }
+  
+  .checkbox-item label::after {
+    left: 8px;
+    top: 4px;
+    width: 7px;
+    height: 12px;
+  }
+  
+  .form-group {
+    margin-bottom: 12px;
+  }
+  
+  .form-group label {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+  
+  .form-col label {
+    font-size: 15px;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea,
+  .form-col input {
+    padding: 14px;
+    font-size: 16px;
+  }
+  
+  .form-hint {
+    font-size: 13px;
+  }
+}
+
+/* ОЧЕНЬ МАЛЕНЬКИЕ ЭКРАНЫ */
+@media (max-width: 360px) {
+  .checkbox-item label {
+    font-size: 14px;
+    padding-left: 34px;
+  }
+  
+  .checkbox-item label::before {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .checkbox-item label::after {
+    left: 6px;
+    top: 3px;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
