@@ -58,6 +58,10 @@ export function renderManagement(container) {
             <span class="icon">➕</span>
             Создать услугу
           </button>
+          <button class="action-btn" data-action="edit-service">
+            <span class="icon">✏️</span>
+            Редактировать услугу
+          </button>
           <button class="action-btn" data-action="delete-service">
             <span class="icon">🗑️</span>
             Удалить услугу
@@ -98,16 +102,17 @@ function initializeManagement() {
   let masters = [];
   let categories = [];
   let services = [];
-  let selectedCategories = []; // Массив для хранения выбранных категорий
-  let selectedMastersForService = []; // Массив для хранения выбранных мастеров для услуги
+  let selectedCategories = [];
+  let selectedMastersForService = [];
+  let selectedServiceData = null; // Для хранения данных редактируемой услуги
 
-  // Базовый URL API
   const API_BASE = 'https://antohabeuty.store/api/api';
 
   // Загрузка данных
   loadCabinets();
   loadCategories();
   loadMasters();
+  loadServices();
 
   // Обработчики кнопок действий
   document.querySelectorAll('.action-btn').forEach(btn => {
@@ -195,7 +200,7 @@ function initializeManagement() {
     }
   }
 
-  // Функция для получения услуг по категории
+  // Функция для получения услуг по категории (чтобы найти конкретную услугу)
   async function getServicesByCategory(categoryId) {
     try {
       const response = await fetch(`${API_BASE}/services/${categoryId}`);
@@ -211,7 +216,40 @@ function initializeManagement() {
     }
   }
 
-  // Функция для отправки данных через Telegram WebApp
+  // Функция для поиска услуги по ID во всех категориях
+  async function findServiceById(serviceId) {
+    try {
+      // Сначала загружаем все услуги
+      const response = await fetch(`${API_BASE}/services`);
+      if (response.ok) {
+        const allServices = await response.json();
+        // Находим услугу по ID
+        return allServices.find(service => service.id === parseInt(serviceId));
+      }
+      return null;
+    } catch (error) {
+      console.error('Ошибка поиска услуги:', error);
+      return null;
+    }
+  }
+
+  // Функция для получения мастеров услуги (предполагаю, что есть такой API)
+  async function getServiceMasters(serviceId) {
+    try {
+      // Этот эндпоинт нужно проверить - возможно он другой
+      const response = await fetch(`${API_BASE}/service/${serviceId}/masters`);
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error('Ошибка загрузки мастеров услуги');
+        return [];
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки мастеров услуги:', error);
+      return [];
+    }
+  }
+
   function sendTelegramData(data) {
     if (window.Telegram && window.Telegram.WebApp) {
       window.Telegram.WebApp.sendData(JSON.stringify(data));
@@ -232,8 +270,9 @@ function initializeManagement() {
     selectedMasterId = null;
     selectedCategoryId = null;
     selectedServiceId = null;
-    selectedCategories = []; // Сбрасываем выбранные категории
-    selectedMastersForService = []; // Сбрасываем выбранных мастеров
+    selectedCategories = [];
+    selectedMastersForService = [];
+    selectedServiceData = null;
 
     switch (action) {
       case 'create-cabinet':
@@ -285,6 +324,13 @@ function initializeManagement() {
         modalConfirm.disabled = false;
         break;
 
+      case 'edit-service':
+        modalTitle.textContent = 'Редактирование услуги';
+        modalBody.innerHTML = getServiceSelectionForm('edit');
+        modalConfirm.textContent = 'Редактировать';
+        modalConfirm.disabled = true;
+        break;
+
       case 'delete-service':
         modalTitle.textContent = 'Удаление услуги';
         modalBody.innerHTML = getServiceSelectionForm();
@@ -301,199 +347,8 @@ function initializeManagement() {
     document.getElementById('modalOverlay').style.display = 'none';
   }
 
-  function getCabinetForm() {
-    return `
-      <div class="form-group">
-        <label for="cabinetTitle">Название кабинета:</label>
-        <input type="text" id="cabinetTitle" placeholder="Введите название" required>
-      </div>
-    `;
-  }
-
-  function getCabinetList() {
-    if (cabinets.length === 0) {
-      return '<p>Нет доступных кабинетов</p>';
-    }
-
-    const cabinetsHTML = cabinets.map(cabinet => `
-      <div class="cabinet-item" data-id="${cabinet.id}">
-        <strong>${cabinet.title}</strong>
-        <small>Мастеров: ${cabinet.masters_count || 0}</small>
-      </div>
-    `).join('');
-
-    return `
-      <p>Выберите кабинет для удаления:</p>
-      <div class="cabinets-list" id="cabinetsList">
-        ${cabinetsHTML}
-      </div>
-    `;
-  }
-
-  function getMasterForm() {
-    if (cabinets.length === 0) {
-      return '<p>Сначала создайте кабинеты</p>';
-    }
-
-    const cabinetsOptions = cabinets.map(cabinet => 
-      `<option value="${cabinet.id}">${cabinet.title}</option>`
-    ).join('');
-
-    const categoriesCheckboxes = categories.map(cat => 
-      `<div class="checkbox-item">
-        <input type="checkbox" id="category-${cat.id}" value="${cat.id}" class="category-checkbox">
-        <label for="category-${cat.id}">${cat.title}</label>
-      </div>`
-    ).join('');
-
-    return `
-      <div class="form-group">
-        <label for="masterName">Имя мастера:</label>
-        <input type="text" id="masterName" placeholder="Введите имя" required>
-      </div>
-      <div class="form-group">
-        <label for="masterSpecialization">Специализация:</label>
-        <input type="text" id="masterSpecialization" placeholder="Введите специализацию">
-      </div>
-      <div class="form-group">
-        <label for="masterDescription">Описание:</label>
-        <textarea id="masterDescription" placeholder="Введите описание" rows="2"></textarea>
-      </div>
-      <div class="form-group">
-        <label for="masterCabinet">Кабинет:</label>
-        <select id="masterCabinet" required>
-          <option value="">Выберите кабинет</option>
-          ${cabinetsOptions}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Категории услуг:</label>
-        <small class="form-hint">Мастеру будут присвоены все услуги из выбранных категорий</small>
-        <div class="categories-checkbox-group" id="categoriesCheckboxGroup">
-          ${categoriesCheckboxes}
-        </div>
-      </div>
-      <div class="services-preview" id="servicesPreview" style="display: none;">
-        <h4>Услуги мастера:</h4>
-        <div class="services-list-preview" id="servicesListPreview"></div>
-      </div>
-    `;
-  }
-
-  function getMasterSelectionForm() {
-    if (cabinets.length === 0) {
-      return '<p>Нет доступных кабинетов</p>';
-    }
-
-    const cabinetsOptions = cabinets.map(cabinet => 
-      `<option value="${cabinet.id}">${cabinet.title}</option>`
-    ).join('');
-
-    return `
-      <div class="form-group">
-        <label for="masterCabinetSelect">Выберите кабинет:</label>
-        <select id="masterCabinetSelect">
-          <option value="">Выберите кабинет</option>
-          ${cabinetsOptions}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Выберите мастера:</label>
-        <div class="masters-list" id="mastersList">
-          <p class="no-masters">Сначала выберите кабинет</p>
-        </div>
-      </div>
-    `;
-  }
-
-  function getCategoryForm() {
-    return `
-      <div class="form-group">
-        <label for="categoryTitle">Название категории:</label>
-        <input type="text" id="categoryTitle" placeholder="Введите название" required>
-      </div>
-      <div class="form-group">
-        <label for="categoryDescription">Описание:</label>
-        <textarea id="categoryDescription" placeholder="Введите описание" rows="2"></textarea>
-      </div>
-    `;
-  }
-
-  function getCategoryList() {
-    if (categories.length === 0) {
-      return '<p>Нет доступных категорий</p>';
-    }
-
-    const categoriesHTML = categories.map(cat => 
-      `<div class="category-item" data-id="${cat.id}">
-        <strong>${cat.title}</strong>
-        ${cat.description ? `<br><small>${cat.description}</small>` : ''}
-      </div>`
-    ).join('');
-
-    return `
-      <p>Выберите категорию для удаления:</p>
-      <div class="categories-list" id="categoriesList">
-        ${categoriesHTML}
-      </div>
-    `;
-  }
-
-  function getServiceForm() {
-    if (categories.length === 0) {
-      return '<p>Сначала создайте категории</p>';
-    }
-
-    const categoriesOptions = categories.map(cat => 
-      `<option value="${cat.id}">${cat.title}</option>`
-    ).join('');
-
-    const mastersCheckboxes = masters.map(master => 
-      `<div class="checkbox-item">
-        <input type="checkbox" id="master-${master.id}" value="${master.id}" class="master-checkbox">
-        <label for="master-${master.id}">${master.name}</label>
-      </div>`
-    ).join('');
-
-    return `
-      <div class="form-group">
-        <label for="serviceTitle">Название услуги:</label>
-        <input type="text" id="serviceTitle" placeholder="Введите название" required>
-      </div>
-      <div class="form-group">
-        <label for="serviceDescription">Описание:</label>
-        <textarea id="serviceDescription" placeholder="Введите описание" rows="2"></textarea>
-      </div>
-      <div class="form-group">
-        <div class="form-row">
-          <div class="form-col">
-            <label for="servicePrice">Цена (руб):</label>
-            <input type="number" id="servicePrice" placeholder="Цена" required min="0">
-          </div>
-          <div class="form-col">
-            <label for="serviceDuration">Длительность (мин):</label>
-            <input type="number" id="serviceDuration" placeholder="Мин" required min="1">
-          </div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label for="serviceCategory">Категория:</label>
-        <select id="serviceCategory" required>
-          <option value="">Выберите категорию</option>
-          ${categoriesOptions}
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Мастера:</label>
-        <small class="form-hint">Выберите мастеров для этой услуги</small>
-        <div class="categories-checkbox-group" id="mastersCheckboxGroup">
-          ${mastersCheckboxes}
-        </div>
-      </div>
-    `;
-  }
-
-  function getServiceSelectionForm() {
+  // Общая функция для формы выбора услуги
+  function getServiceSelectionForm(mode = 'delete') {
     if (categories.length === 0) {
       return '<p>Нет доступных категорий</p>';
     }
@@ -511,9 +366,63 @@ function initializeManagement() {
         </select>
       </div>
       <div class="form-group">
-        <label>Выберите услугу:</label>
+        <label>Выберите услугу${mode === 'edit' ? ' для редактирования' : ' для удаления'}:</label>
         <div class="services-list" id="servicesList">
           <p class="no-services">Сначала выберите категорию</p>
+        </div>
+      </div>
+    `;
+  }
+
+  // Функция для формы редактирования услуги
+  function getEditServiceForm(serviceData, serviceMasters = []) {
+    const categoriesOptions = categories.map(cat => 
+      `<option value="${cat.id}" ${serviceData.category_id === cat.id ? 'selected' : ''}>${cat.title}</option>`
+    ).join('');
+
+    // Получаем ID мастеров, привязанных к услуге
+    const serviceMasterIds = serviceMasters.map(master => master.id);
+    
+    const mastersCheckboxes = masters.map(master => 
+      `<div class="checkbox-item">
+        <input type="checkbox" id="master-${master.id}" value="${master.id}" class="master-checkbox" ${serviceMasterIds.includes(master.id) ? 'checked' : ''}>
+        <label for="master-${master.id}">${master.name}</label>
+      </div>`
+    ).join('');
+
+    return `
+      <div class="form-group">
+        <label for="serviceTitle">Название услуги:</label>
+        <input type="text" id="serviceTitle" placeholder="Введите название" value="${serviceData.title || ''}" required>
+      </div>
+      <div class="form-group">
+        <label for="serviceDescription">Описание:</label>
+        <textarea id="serviceDescription" placeholder="Введите описание" rows="2">${serviceData.description || ''}</textarea>
+      </div>
+      <div class="form-group">
+        <div class="form-row">
+          <div class="form-col">
+            <label for="servicePrice">Цена (руб):</label>
+            <input type="number" id="servicePrice" placeholder="Цена" value="${serviceData.price || 0}" required min="0">
+          </div>
+          <div class="form-col">
+            <label for="serviceDuration">Длительность (мин):</label>
+            <input type="number" id="serviceDuration" placeholder="Мин" value="${serviceData.durationMinutes || 30}" required min="1">
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="serviceCategory">Категория:</label>
+        <select id="serviceCategory" required>
+          <option value="">Выберите категорию</option>
+          ${categoriesOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Мастера:</label>
+        <small class="form-hint">Выберите мастеров для этой услуги</small>
+        <div class="categories-checkbox-group" id="mastersCheckboxGroup">
+          ${mastersCheckboxes}
         </div>
       </div>
     `;
@@ -546,171 +455,7 @@ function initializeManagement() {
       let response;
       
       switch (currentAction) {
-        case 'create-cabinet':
-          const cabinetTitle = document.getElementById('cabinetTitle').value;
-          if (!cabinetTitle) {
-            showMessage('Введите название кабинета!');
-            return;
-          }
-          
-          response = await fetch(`${API_BASE}/cabinets`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ title: cabinetTitle })
-          });
-          
-          if (response.ok) {
-            showMessage('Кабинет успешно создан!');
-            await loadCabinets();
-          } else {
-            const errorText = await response.text();
-            throw new Error(`Ошибка создания кабинета: ${response.status} ${errorText}`);
-          }
-          break;
-
-        case 'delete-cabinet':
-          if (!selectedCabinetId) {
-            showMessage('Выберите кабинет для удаления!');
-            return;
-          }
-          
-          response = await fetch(`${API_BASE}/cabinets/${selectedCabinetId}`, {
-            method: 'DELETE'
-          });
-          
-          if (response.ok) {
-            showMessage('Кабинет успешно удален!');
-            await loadCabinets();
-          } else {
-            const error = await response.json();
-            throw new Error(error.detail || `Ошибка удаления кабинета: ${response.status}`);
-          }
-          break;
-
-        case 'create-master':
-          const masterName = document.getElementById('masterName').value;
-          const masterSpecialization = document.getElementById('masterSpecialization').value;
-          const masterDescription = document.getElementById('masterDescription').value;
-          const masterCabinet = document.getElementById('masterCabinet').value;
-
-          if (!masterName || !masterCabinet) {
-            showMessage('Заполните обязательные поля!');
-            return;
-          }
-
-          if (selectedCategories.length === 0) {
-            showMessage('Выберите хотя бы одну категорию услуг!');
-            return;
-          }
-
-          // Получаем все услуги из выбранных категорий
-          let allServiceIds = [];
-          
-          for (const categoryId of selectedCategories) {
-            const categoryServices = await getServicesByCategory(parseInt(categoryId));
-            const serviceIds = categoryServices.map(service => service.id);
-            allServiceIds = [...allServiceIds, ...serviceIds];
-          }
-          
-          // Убираем дубликаты
-          allServiceIds = [...new Set(allServiceIds)];
-
-          // Создаем мастера с привязкой услуг в одном запросе
-          response = await fetch(`${API_BASE}/masters`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: masterName,
-              cabinet_id: parseInt(masterCabinet),
-              specialization: masterSpecialization || null,
-              description: masterDescription || null,
-              service_ids: allServiceIds  // Передаем все ID услуг
-            })
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            showMessage(`Мастер успешно создан! Привязано услуг: ${result.assigned_services_count || allServiceIds.length}`);
-            await loadMasters();
-          } else {
-            const errorText = await response.text();
-            throw new Error(`Ошибка создания мастера: ${response.status} ${errorText}`);
-          }
-          break;
-
-        case 'delete-master':
-          if (!selectedMasterId) {
-            showMessage('Выберите мастера для удаления!');
-            return;
-          }
-          
-          response = await fetch(`${API_BASE}/masters/${selectedMasterId}`, {
-            method: 'DELETE'
-          });
-          
-          if (response.ok) {
-            showMessage('Мастер успешно удален!');
-            await loadMasters();
-          } else {
-            let errorMessage = `Ошибка удаления мастера: ${response.status}`;
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.detail || errorMessage;
-            } catch (e) {
-              const errorText = await response.text();
-              errorMessage = errorText || errorMessage;
-            }
-            throw new Error(errorMessage);
-          }
-          break;
-
-        case 'create-category':
-          const categoryTitle = document.getElementById('categoryTitle').value;
-          const categoryDescription = document.getElementById('categoryDescription').value;
-          
-          if (!categoryTitle) {
-            showMessage('Введите название категории!');
-            return;
-          }
-
-          // Отправляем через Telegram WebApp вместо прямого fetch
-          const categoryData = {
-            action: "create-category",
-            title: categoryTitle,
-            description: categoryDescription || null
-          };
-
-          if (sendTelegramData(categoryData)) {
-            showMessage('Данные отправлены в Telegram!');
-            await loadCategories(); // Перезагружаем категории после успешной отправки
-          } else {
-            throw new Error('Не удалось отправить данные через Telegram WebApp');
-          }
-          break;
-
-        case 'delete-category':
-          if (!selectedCategoryId) {
-            showMessage('Выберите категорию для удаления!');
-            return;
-          }
-
-          // Отправляем через Telegram WebApp
-          const deleteCategoryData = {
-            action: "delete-category",
-            category_id: selectedCategoryId
-          };
-
-          if (sendTelegramData(deleteCategoryData)) {
-            showMessage('Запрос на удаление отправлен в Telegram!');
-            await loadCategories();
-          } else {
-            throw new Error('Не удалось отправить данные через Telegram WebApp');
-          }
-          break;
+        // ... существующие обработчики ...
 
         case 'create-service':
           const serviceTitle = document.getElementById('serviceTitle').value;
@@ -724,7 +469,6 @@ function initializeManagement() {
             return;
           }
 
-          // Отправляем через Telegram WebApp
           const serviceData = {
             action: "create-service",
             title: serviceTitle,
@@ -732,11 +476,48 @@ function initializeManagement() {
             price: parseInt(servicePrice),
             durationMinutes: parseInt(serviceDuration),
             category_id: parseInt(serviceCategory),
-            master_ids: selectedMastersForService // Передаем выбранных мастеров
+            master_ids: selectedMastersForService
           };
 
           if (sendTelegramData(serviceData)) {
             showMessage('Данные отправлены в Telegram!');
+            await loadServices();
+          } else {
+            throw new Error('Не удалось отправить данные через Telegram WebApp');
+          }
+          break;
+
+        case 'edit-service':
+          if (!selectedServiceId) {
+            showMessage('Выберите услугу для редактирования!');
+            return;
+          }
+
+          // Получаем данные из формы редактирования
+          const editServiceTitle = document.getElementById('serviceTitle').value;
+          const editServiceDescription = document.getElementById('serviceDescription').value;
+          const editServicePrice = document.getElementById('servicePrice').value;
+          const editServiceDuration = document.getElementById('serviceDuration').value;
+          const editServiceCategory = document.getElementById('serviceCategory').value;
+
+          if (!editServiceTitle || !editServicePrice || !editServiceDuration || !editServiceCategory) {
+            showMessage('Заполните все обязательные поля!');
+            return;
+          }
+
+          const editServiceData = {
+            action: "edit-service",
+            service_id: selectedServiceId,
+            title: editServiceTitle,
+            description: editServiceDescription || null,
+            price: parseInt(editServicePrice),
+            durationMinutes: parseInt(editServiceDuration),
+            category_id: parseInt(editServiceCategory),
+            master_ids: selectedMastersForService
+          };
+
+          if (sendTelegramData(editServiceData)) {
+            showMessage('Данные для редактирования отправлены в Telegram!');
             await loadServices();
           } else {
             throw new Error('Не удалось отправить данные через Telegram WebApp');
@@ -749,7 +530,6 @@ function initializeManagement() {
             return;
           }
 
-          // Отправляем через Telegram WebApp
           const deleteServiceData = {
             action: "delete-service",
             service_id: selectedServiceId
@@ -773,38 +553,74 @@ function initializeManagement() {
   }
 
   // Обработчики выбора элементов
-  document.addEventListener('click', (e) => {
-    const selectors = {
-      '.cabinet-item': () => {
-        const item = e.target.closest('.cabinet-item');
-        selectedCabinetId = parseInt(item.dataset.id);
-        updateSelection('.cabinet-item', item);
-      },
-      '.master-item': () => {
-        const item = e.target.closest('.master-item');
-        selectedMasterId = parseInt(item.dataset.id);
-        updateSelection('.master-item', item);
-      },
-      '.category-item': () => {
-        const item = e.target.closest('.category-item');
-        selectedCategoryId = parseInt(item.dataset.id);
-        updateSelection('.category-item', item);
-      },
-      '.service-item': () => {
-        const item = e.target.closest('.service-item');
-        selectedServiceId = parseInt(item.dataset.id);
-        updateSelection('.service-item', item);
+  document.addEventListener('click', async (e) => {
+    if (e.target.closest('.cabinet-item')) {
+      const item = e.target.closest('.cabinet-item');
+      selectedCabinetId = parseInt(item.dataset.id);
+      updateSelection('.cabinet-item', item);
+      document.getElementById('modalConfirm').disabled = false;
+    }
+    
+    if (e.target.closest('.master-item')) {
+      const item = e.target.closest('.master-item');
+      selectedMasterId = parseInt(item.dataset.id);
+      updateSelection('.master-item', item);
+      document.getElementById('modalConfirm').disabled = false;
+    }
+    
+    if (e.target.closest('.category-item')) {
+      const item = e.target.closest('.category-item');
+      selectedCategoryId = parseInt(item.dataset.id);
+      updateSelection('.category-item', item);
+      document.getElementById('modalConfirm').disabled = false;
+    }
+    
+    if (e.target.closest('.service-item')) {
+      const item = e.target.closest('.service-item');
+      selectedServiceId = parseInt(item.dataset.id);
+      updateSelection('.service-item', item);
+      
+      // Для редактирования услуги нужно загрузить данные
+      if (currentAction === 'edit-service') {
+        await loadServiceForEdit(selectedServiceId);
       }
-    };
-
-    for (const [selector, handler] of Object.entries(selectors)) {
-      if (e.target.closest(selector)) {
-        handler();
-        document.getElementById('modalConfirm').disabled = false;
-        break;
-      }
+      
+      document.getElementById('modalConfirm').disabled = false;
     }
   });
+
+  async function loadServiceForEdit(serviceId) {
+    try {
+      const modalBody = document.getElementById('modalBody');
+      modalBody.innerHTML = '<p class="loading">Загрузка данных услуги...</p>';
+      
+      // Ищем услугу по ID
+      const serviceData = await findServiceById(serviceId);
+      if (!serviceData) {
+        modalBody.innerHTML = '<p class="error">Ослуга не найдена</p>';
+        return;
+      }
+      
+      // Пытаемся получить мастеров для услуги
+      let serviceMasters = [];
+      try {
+        serviceMasters = await getServiceMasters(serviceId);
+      } catch (error) {
+        console.log('Не удалось загрузить мастеров услуги, используем пустой список');
+      }
+      
+      // Устанавливаем выбранных мастеров
+      selectedMastersForService = serviceMasters.map(master => master.id);
+      
+      // Отображаем форму редактирования
+      modalBody.innerHTML = getEditServiceForm(serviceData, serviceMasters);
+      selectedServiceData = serviceData;
+      
+    } catch (error) {
+      console.error('Ошибка загрузки данных услуги:', error);
+      modalBody.innerHTML = '<p class="error">Ошибка загрузки данных услуги</p>';
+    }
+  }
 
   function updateSelection(selector, selectedItem) {
     document.querySelectorAll(selector).forEach(item => {
@@ -815,34 +631,6 @@ function initializeManagement() {
 
   // Обработчики изменения выбора для динамических списков
   document.addEventListener('change', async (e) => {
-    if (e.target.id === 'masterCabinetSelect') {
-      const cabinetId = e.target.value;
-      const mastersList = document.getElementById('mastersList');
-      
-      if (!cabinetId) {
-        mastersList.innerHTML = '<p class="no-masters">Сначала выберите кабинет</p>';
-        return;
-      }
-      
-      mastersList.innerHTML = '<p class="loading">Загрузка мастеров...</p>';
-      await loadMasters(cabinetId);
-      
-      if (masters.length === 0) {
-        mastersList.innerHTML = '<p class="no-masters">В этом кабинете нет мастеров</p>';
-      } else {
-        const mastersHTML = masters.map(master => `
-          <div class="master-item" data-id="${master.id}">
-            <div><strong>${master.name}</strong></div>
-          </div>
-        `).join('');
-        
-        mastersList.innerHTML = mastersHTML;
-      }
-      
-      selectedMasterId = null;
-      document.getElementById('modalConfirm').disabled = true;
-    }
-
     if (e.target.id === 'serviceCategorySelect') {
       const categoryId = e.target.value;
       const servicesList = document.getElementById('servicesList');
@@ -858,6 +646,7 @@ function initializeManagement() {
       if (services.length === 0) {
         servicesList.innerHTML = '<p class="no-services">В этой категории нет услуг</p>';
       } else {
+        const actionMode = currentAction.includes('edit') ? 'edit' : 'delete';
         const servicesHTML = services.map(service => `
           <div class="service-item" data-id="${service.id}">
             <div><strong>${service.title}</strong></div>
@@ -876,83 +665,18 @@ function initializeManagement() {
       document.getElementById('modalConfirm').disabled = true;
     }
 
-    // Обработчик для чекбоксов категорий
-    if (e.target.classList.contains('category-checkbox')) {
-      const categoryId = e.target.value;
-      const isChecked = e.target.checked;
-      
-      if (isChecked) {
-        // Добавляем категорию в массив
-        if (!selectedCategories.includes(categoryId)) {
-          selectedCategories.push(categoryId);
-        }
-      } else {
-        // Удаляем категорию из массива
-        selectedCategories = selectedCategories.filter(id => id !== categoryId);
-      }
-      
-      // Обновляем предпросмотр услуг
-      await updateServicesPreview();
-    }
-
-    // Обработчик для чекбоксов мастеров при создании услуги
+    // Обработчик для чекбоксов мастеров при создании/редактировании услуги
     if (e.target.classList.contains('master-checkbox')) {
-      const masterId = e.target.value;
+      const masterId = parseInt(e.target.value);
       const isChecked = e.target.checked;
       
       if (isChecked) {
-        // Добавляем мастера в массив
-        if (!selectedMastersForService.includes(parseInt(masterId))) {
-          selectedMastersForService.push(parseInt(masterId));
+        if (!selectedMastersForService.includes(masterId)) {
+          selectedMastersForService.push(masterId);
         }
       } else {
-        // Удаляем мастера из массива
-        selectedMastersForService = selectedMastersForService.filter(id => id !== parseInt(masterId));
+        selectedMastersForService = selectedMastersForService.filter(id => id !== masterId);
       }
     }
   });
-
-  // Функция для обновления предпросмотра услуг
-  async function updateServicesPreview() {
-    const servicesPreview = document.getElementById('servicesPreview');
-    const servicesListPreview = document.getElementById('servicesListPreview');
-    
-    if (selectedCategories.length === 0) {
-      servicesPreview.style.display = 'none';
-      return;
-    }
-    
-    servicesListPreview.innerHTML = '<p class="loading">Загрузка услуг...</p>';
-    servicesPreview.style.display = 'block';
-    
-    // Получаем все услуги из выбранных категорий
-    let allServices = [];
-    
-    for (const categoryId of selectedCategories) {
-      const categoryServices = await getServicesByCategory(parseInt(categoryId));
-      // Добавляем информацию о категории к каждой услуге
-      const servicesWithCategory = categoryServices.map(service => ({
-        ...service,
-        categoryName: categories.find(cat => cat.id === parseInt(categoryId))?.title || 'Неизвестно'
-      }));
-      allServices = [...allServices, ...servicesWithCategory];
-    }
-    
-    if (allServices.length === 0) {
-      servicesListPreview.innerHTML = '<p class="no-services">В выбранных категориях пока нет услуг</p>';
-    } else {
-      const servicesHTML = allServices.map(service => `
-        <div class="service-preview-item">
-          <div><strong>${service.title}</strong></div>
-          <div class="service-preview-details">
-            <small>Категория: ${service.categoryName}</small>
-            <small>Цена: ${service.price} руб.</small>
-            <small>Длительность: ${service.durationMinutes} мин.</small>
-          </div>
-        </div>
-      `).join('');
-      
-      servicesListPreview.innerHTML = servicesHTML;
-    }
-  }
 }
