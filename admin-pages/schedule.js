@@ -29,6 +29,11 @@ function initializeSchedule() {
   let currentDate = new Date();
   let mastersCache = {}; // Кэш для данных о мастерах
 
+  // Делаем функции глобальными для использования в onclick
+  window.openRecordModal = openRecordModal;
+  window.showRecordComment = showRecordComment;
+  window.showAnamnesis = showAnamnesis;
+
   function getWeekDates(date) {
     const start = new Date(date);
     start.setDate(date.getDate() - date.getDay() + 1);
@@ -106,7 +111,10 @@ function initializeSchedule() {
     scheduleContainer.innerHTML = '<div class="loading">Загрузка расписания...</div>';
 
     try {
-      const response = await fetch('https://antohabeuty.store/api/api/books/slots/');
+      const response = await fetch('http://https://antohabeuty.store/api/api/books/slots/');
+      if (!response.ok) {
+        throw new Error(`Ошибка загрузки: ${response.status}`);
+      }
       const slots = await response.json();
 
       let scheduleHTML = '';
@@ -115,7 +123,10 @@ function initializeSchedule() {
         const dayStr = day.toISOString().split('T')[0];
         
         // Получаем все слоты для этого дня
-        const daySlots = slots.filter(slot => slot.slot_datetime.startsWith(dayStr));
+        const daySlots = slots.filter(slot => {
+          if (!slot.slot_datetime) return false;
+          return slot.slot_datetime.startsWith(dayStr);
+        });
         
         // Группируем слоты по времени
         const groupedSlots = groupSlotsByTime(daySlots);
@@ -131,6 +142,7 @@ function initializeSchedule() {
               ${timeKeys.length > 0 ? 
                 timeKeys.map(timeKey => {
                   const time = timeKey.split('_')[1];
+                  const date = timeKey.split('_')[0];
                   const timeSlots = groupedSlots[timeKey];
                   
                   return `
@@ -138,29 +150,53 @@ function initializeSchedule() {
                       <div class="time-header">${time}</div>
                       <div class="masters-slots">
                         ${timeSlots.map(slot => {
-                          const status = slot.status.toLowerCase();
+                          const status = slot.status ? slot.status.toLowerCase() : '';
+                          const isOpen = slot.status === "Открыто";
+                          const isClosed = slot.status === "Закрыто для записи" || slot.status === "NOOPEN";
                           const telegramId = slot.telegram_id;
-                          const isClickable = telegramId && (slot.status === "Ожидание" || slot.status === "Подтверждено");
+                          const recordId = slot.id;
+                          const slotDateTime = slot.slot_datetime;
+                          const masterId = slot.master_id;
+                          
+                          // Определяем кликабельность и подсказку
+                          let clickHandler = '';
+                          let additionalInfo = '';
+                          
+                          if (isOpen) {
+                            clickHandler = `onclick="openRecordModal('${masterId}', '${slotDateTime}', '${recordId}')"`;
+                            additionalInfo = '<span class="slot-hint">👆 Нажмите для закрытия записи</span>';
+                          } else if (isClosed) {
+                            clickHandler = `onclick="showRecordComment('${masterId}', '${slotDateTime}', '${recordId}')"`;
+                            additionalInfo = '<span class="slot-hint">👆 Нажмите для просмотра комментария</span>';
+                          } else if (telegramId && (slot.status === "Ожидание" || slot.status === "Подтверждено")) {
+                            clickHandler = `onclick="showAnamnesis('${telegramId}', '${masterId}')"`;
+                            additionalInfo = '<span class="slot-hint">👆 Нажмите для анамнеза</span>';
+                          }
                           
                           return `
-                          <div class="slot-item ${status}" 
-                               data-telegram-id="${telegramId || ''}" 
-                               data-master-id="${slot.master_id}"
-                               data-clickable="${isClickable}">
-                            <div class="slot-master-info">
-                              <span class="master-name">Мастер ${slot.master_id}</span>
-                            </div>
-                            <div class="slot-content">
-                              <span class="slot-status">${slot.status}</span>
-                              <div class="client-info">
-                                ${telegramId ? `
-                                  <span class="client-name">ID: ${telegramId}</span>
-                                  ${isClickable ? '<span class="telegram-id">👆 Нажмите для анамнеза</span>' : ''}
-                                ` : '<span class="client-name">Свободно</span>'}
+                            <div class="slot-item ${status}" 
+                                 data-telegram-id="${telegramId || ''}" 
+                                 data-master-id="${masterId}"
+                                 data-record-id="${recordId}"
+                                 data-slot-datetime="${slotDateTime}"
+                                 ${clickHandler}
+                                 style="cursor: ${clickHandler ? 'pointer' : 'default'}">
+                              <div class="slot-master-info">
+                                <span class="master-name">Мастер ${masterId}</span>
+                              </div>
+                              <div class="slot-content">
+                                <span class="slot-status">${slot.status || 'Неизвестно'}</span>
+                                <div class="client-info">
+                                  ${telegramId ? 
+                                    `<span class="client-name">ID: ${telegramId}</span>` : 
+                                    `<span class="client-name">${isOpen ? 'Свободно' : 'Недоступно'}</span>`
+                                  }
+                                  ${additionalInfo || ''}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        `}).join('')}
+                          `;
+                        }).join('')}
                       </div>
                     </div>
                   `;
@@ -177,12 +213,9 @@ function initializeSchedule() {
       // Загружаем и отображаем информацию о мастерах
       await loadMastersInfo();
       
-      // Добавляем обработчики кликов для слотов с анамнезом
-      addSlotClickHandlers();
-      
     } catch (error) {
       console.error('Ошибка загрузки расписания:', error);
-      scheduleContainer.innerHTML = '<div class="error">Ошибка загрузки расписания</div>';
+      scheduleContainer.innerHTML = '<div class="error">Ошибка загрузки расписания: ' + error.message + '</div>';
     }
   }
 
@@ -205,30 +238,235 @@ function initializeSchedule() {
     });
   }
 
-  function addSlotClickHandlers() {
-    const slotItems = document.querySelectorAll('.slot-item[data-clickable="true"]');
+  // Модальное окно для закрытия записи с комментарием
+  function openRecordModal(masterId, slotDateTime, recordId) {
+    const modal = document.createElement('div');
+    modal.className = 'record-modal';
+    modal.innerHTML = `
+      <div class="record-content">
+        <div class="record-header">
+          <h3>Закрыть запись</h3>
+          <button class="record-close">&times;</button>
+        </div>
+        <div class="record-form">
+          <div class="note">
+            <strong>Внимание:</strong> Вы записываете клиента вручную. Клиенты больше не смогут записаться на это время.
+          </div>
+          <div class="form-group">
+            <label for="recordComment">Комментарий (обязательно):</label>
+            <textarea id="recordComment" placeholder="Укажите в комментарии имя клиента и процедуру..." rows="4" required></textarea>
+            <small style="color: #666; font-size: 12px;">Например: "Иван Иванов - Массаж спины" или "Елена - Чистка лица"</small>
+          </div>
+          <div class="form-actions">
+            <button class="btn-cancel">Отмена</button>
+            <button class="btn-submit">Закрыть запись</button>
+          </div>
+        </div>
+        <div class="record-info">
+          <small>Мастер ID: ${masterId}, Время: ${new Date(slotDateTime).toLocaleString('ru-RU')}</small>
+        </div>
+      </div>
+    `;
     
-    slotItems.forEach(slot => {
-      slot.addEventListener('click', async () => {
-        const telegramId = slot.getAttribute('data-telegram-id');
-        const masterId = slot.getAttribute('data-master-id');
+    document.body.appendChild(modal);
+    
+    // Обработчики
+    const closeBtn = modal.querySelector('.record-close');
+    const cancelBtn = modal.querySelector('.btn-cancel');
+    const submitBtn = modal.querySelector('.btn-submit');
+    const commentInput = modal.querySelector('#recordComment');
+    
+    const closeModal = () => {
+      document.body.removeChild(modal);
+      document.removeEventListener('keydown', escapeHandler);
+    };
+    
+    const escapeHandler = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+    
+    closeBtn.addEventListener('click', closeModal);
+    cancelBtn.addEventListener('click', closeModal);
+    
+    submitBtn.addEventListener('click', async () => {
+      const comment = commentInput.value.trim();
+      
+      if (!comment) {
+        alert('Пожалуйста, введите комментарий');
+        commentInput.focus();
+        return;
+      }
+      
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Сохранение...';
         
-        if (telegramId) {
-          await showAnamnesis(telegramId, masterId);
+        // Данные для отправки на сервер
+        const recordData = {
+          master_id: parseInt(masterId),
+          slot_datetime: slotDateTime,
+          comment: comment
+        };
+        
+        console.log('Отправка данных:', recordData);
+        
+        // Используем ваш endpoint для обновления записи
+        const response = await fetch('http://https://antohabeuty.store/api/api/records/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(recordData)
+        });
+        
+        console.log('Ответ сервера:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          let errorMessage = `Ошибка ${response.status}: ${response.statusText}`;
+          try {
+            const errorData = await response.json();
+            errorMessage = errorData.detail || errorMessage;
+          } catch (e) {
+            console.error('Ошибка парсинга ошибки:', e);
+          }
+          throw new Error(errorMessage);
         }
-      });
+        
+        const result = await response.json();
+        console.log('Результат:', result);
+        
+        alert(result.message || 'Запись успешно закрыта!');
+        closeModal();
+        
+        // Обновляем расписание
+        const currentWeek = getWeekDates(currentDate);
+        await renderWeekSchedule(currentWeek);
+        
+      } catch (error) {
+        console.error('Ошибка закрытия записи:', error);
+        alert('Ошибка при закрытии записи: ' + error.message);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Закрыть запись';
+      }
     });
+    
+    // Закрытие по клику вне окна
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal();
+      }
+    });
+    
+    // Закрытие по Escape
+    document.addEventListener('keydown', escapeHandler);
+    
+    // Фокус на поле комментария
+    commentInput.focus();
   }
 
+  // Просмотр комментария для закрытых записей
+  async function showRecordComment(masterId, slotDateTime, recordId) {
+    try {
+      console.log('Запрос комментария:', { masterId, slotDateTime, recordId });
+      
+      const encodedDateTime = encodeURIComponent(slotDateTime);
+      const url = `http://https://antohabeuty.store/api/api/records/slot/?master_id=${masterId}&slot_datetime=${encodedDateTime}`;
+      
+      console.log('URL запроса:', url);
+      
+      const response = await fetch(url);
+      
+      console.log('Ответ сервера:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        let errorMessage = `Ошибка ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorMessage;
+        } catch (e) {
+          console.error('Ошибка парсинга ошибки:', e);
+        }
+        throw new Error(errorMessage);
+      }
+      
+      const record = await response.json();
+      console.log('Полученная запись:', record);
+      
+      const modal = document.createElement('div');
+      modal.className = 'comment-modal';
+      modal.innerHTML = `
+        <div class="comment-content">
+          <div class="comment-header">
+            <h3>Информация о записи</h3>
+            <button class="comment-close">&times;</button>
+          </div>
+          <div class="comment-info">
+            <p><strong>Мастер:</strong> ${record.master_name || `ID: ${masterId}`}</p>
+            <p><strong>Время:</strong> ${new Date(slotDateTime).toLocaleString('ru-RU')}</p>
+            <p><strong>Статус:</strong> ${record.status || 'Закрыто для записи'}</p>
+            ${record.user_id ? `<p><strong>ID клиента:</strong> ${record.user_id}</p>` : ''}
+          </div>
+          <div class="comment-text">
+            <h4>Комментарий:</h4>
+            <div class="comment-body">${record.comment ? record.comment.replace(/\n/g, '<br>') : '<em>Комментарий отсутствует</em>'}</div>
+          </div>
+          <div class="form-actions">
+            <button class="btn-close">Закрыть</button>
+          </div>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      const closeBtn = modal.querySelector('.comment-close');
+      const closeActionBtn = modal.querySelector('.btn-close');
+      
+      const closeModal = () => {
+        document.body.removeChild(modal);
+        document.removeEventListener('keydown', escapeHandler);
+      };
+      
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      };
+      
+      closeBtn.addEventListener('click', closeModal);
+      closeActionBtn.addEventListener('click', closeModal);
+      
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal();
+        }
+      });
+      
+      // Закрытие по Escape
+      document.addEventListener('keydown', escapeHandler);
+      
+    } catch (error) {
+      console.error('Ошибка загрузки комментария:', error);
+      alert('Не удалось загрузить информацию о записи: ' + error.message);
+    }
+  }
+
+  // Функция для показа анамнеза
   async function showAnamnesis(telegramId, masterId) {
     try {
+      console.log('Запрос анамнеза:', { telegramId, masterId });
+      
       const response = await fetch(`https://antohabeuty.store/api/api/anamnez/${telegramId}`);
       
       if (!response.ok) {
-        throw new Error('Анамнез не найден');
+        throw new Error(`Ошибка ${response.status}: ${response.statusText}`);
       }
       
       const anamnesis = await response.json();
+      console.log('Полученный анамнез:', anamnesis);
+      
       const masterInfo = await getMasterInfo(masterId);
       
       // Создаем модальное окно
@@ -248,22 +486,39 @@ function initializeSchedule() {
           <div class="anamnesis-info">
             ${renderAnamnesisInfo(anamnesis)}
           </div>
+          <div class="form-actions">
+            <button class="btn-close">Закрыть</button>
+          </div>
         </div>
       `;
       
       document.body.appendChild(modal);
       
-      // Обработчики закрытия
       const closeBtn = modal.querySelector('.anamnesis-close');
-      closeBtn.addEventListener('click', () => {
+      const closeActionBtn = modal.querySelector('.btn-close');
+      
+      const closeModal = () => {
         document.body.removeChild(modal);
-      });
+        document.removeEventListener('keydown', escapeHandler);
+      };
+      
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      };
+      
+      closeBtn.addEventListener('click', closeModal);
+      closeActionBtn.addEventListener('click', closeModal);
       
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-          document.body.removeChild(modal);
+          closeModal();
         }
       });
+      
+      // Закрытие по Escape
+      document.addEventListener('keydown', escapeHandler);
       
     } catch (error) {
       console.error('Ошибка загрузки анамнеза:', error);
@@ -281,21 +536,38 @@ function initializeSchedule() {
             ❌ Не удалось загрузить анамнез<br>
             <small>${error.message}</small>
           </div>
+          <div class="form-actions">
+            <button class="btn-close">Закрыть</button>
+          </div>
         </div>
       `;
       
       document.body.appendChild(modal);
       
       const closeBtn = modal.querySelector('.anamnesis-close');
-      closeBtn.addEventListener('click', () => {
+      const closeActionBtn = modal.querySelector('.btn-close');
+      
+      const closeModal = () => {
         document.body.removeChild(modal);
-      });
+        document.removeEventListener('keydown', escapeHandler);
+      };
+      
+      const escapeHandler = (e) => {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      };
+      
+      closeBtn.addEventListener('click', closeModal);
+      closeActionBtn.addEventListener('click', closeModal);
       
       modal.addEventListener('click', (e) => {
         if (e.target === modal) {
-          document.body.removeChild(modal);
+          closeModal();
         }
       });
+      
+      document.addEventListener('keydown', escapeHandler);
     }
   }
 
