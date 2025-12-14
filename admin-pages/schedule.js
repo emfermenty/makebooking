@@ -313,7 +313,7 @@ function initializeSchedule() {
         console.log('Отправка данных:', recordData);
         
         // Используем ваш endpoint для обновления записи
-        const response = await fetch('http://https://antohabeuty.store/api/api/records/', {
+        const response = await fetch('https://antohabeuty.store/api/api/records/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -373,7 +373,7 @@ function initializeSchedule() {
       console.log('Запрос комментария:', { masterId, slotDateTime, recordId });
       
       const encodedDateTime = encodeURIComponent(slotDateTime);
-      const url = `http://https://antohabeuty.store/api/api/records/slot/?master_id=${masterId}&slot_datetime=${encodedDateTime}`;
+      const url = `https://antohabeuty.store/api/api/records/slot/?master_id=${masterId}&slot_datetime=${encodedDateTime}`;
       
       console.log('URL запроса:', url);
       
@@ -625,4 +625,5 @@ function initializeSchedule() {
     renderWeekSchedule(currentWeek);
   });
 }
+
 
