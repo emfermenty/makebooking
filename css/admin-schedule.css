@@ -102,13 +102,21 @@
 .slot-item.открыто {
   background: #d4edda;
   border-color: #c3e6cb;
-  cursor: default;
 }
 
-.slot-item.закрыто {
+.slot-item.открыто:hover {
+  background: #c3e6cb;
+}
+
+.slot-item.закрыто,
+.slot-item.noopen {
   background: #f8d7da;
   border-color: #f5c6cb;
-  cursor: default;
+}
+
+.slot-item.закрыто:hover,
+.slot-item.noopen:hover {
+  background: #f5c6cb;
 }
 
 /* Стили для информации о мастере */
@@ -129,11 +137,6 @@
   justify-content: space-between;
   align-items: center;
   flex: 1;
-}
-
-.slot-time {
-  font-weight: bold;
-  min-width: 50px;
 }
 
 .slot-status {
@@ -158,6 +161,14 @@
   margin-top: 2px;
 }
 
+.slot-hint {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+  margin-top: 3px;
+  display: block;
+}
+
 .no-slots {
   text-align: center;
   color: #999;
@@ -175,7 +186,9 @@
   color: #dc3545;
 }
 
-/* Модальное окно анамнеза */
+/* Модальные окна */
+.record-modal,
+.comment-modal,
 .anamnesis-modal {
   position: fixed;
   top: 0;
@@ -188,8 +201,16 @@
   justify-content: center;
   z-index: 1000;
   padding: 20px;
+  animation: fadeIn 0.3s ease;
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.record-content,
+.comment-content,
 .anamnesis-content {
   background: white;
   border-radius: 12px;
@@ -198,9 +219,22 @@
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  padding: 20px;
+  animation: slideUp 0.3s ease;
 }
 
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.record-header,
+.comment-header,
 .anamnesis-header {
   display: flex;
   justify-content: space-between;
@@ -208,26 +242,184 @@
   margin-bottom: 20px;
   padding-bottom: 15px;
   border-bottom: 1px solid #e0e0e0;
+  padding: 20px 20px 15px 20px;
 }
 
+.record-header h3,
+.comment-header h3,
 .anamnesis-header h3 {
   margin: 0;
   color: #333;
 }
 
+.record-close,
+.comment-close,
 .anamnesis-close {
   background: none;
   border: none;
   font-size: 24px;
   cursor: pointer;
   color: #666;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.record-close:hover,
+.comment-close:hover,
+.anamnesis-close:hover {
+  background-color: #f5f5f5;
+}
+
+/* Форма записи */
+.record-form {
+  padding: 0 20px 20px 20px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #4CAF50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
+}
+
+.btn-cancel,
+.btn-submit,
+.btn-close {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-cancel {
+  background: #f8f9fa;
+  color: #495057;
+  border: 1px solid #dee2e6;
+}
+
+.btn-cancel:hover {
+  background: #e9ecef;
+}
+
+.btn-submit {
+  background: #28a745;
+  color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.btn-submit:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-close {
+  background: #007bff;
+  color: white;
+  margin: 20px auto;
+  display: block;
+}
+
+.btn-close:hover {
+  background: #0056b3;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Информация в модальных окнах */
+.record-info,
+.comment-info {
+  padding: 15px 20px;
+  font-size: 13px;
+  color: #666;
+  border-top: 1px solid #eee;
+  background: #f8f9fa;
+}
+
+.comment-text,
+.anamnesis-info {
+  padding: 0 20px 20px 20px;
+}
+
+.comment-text h4 {
+  margin: 0 0 10px 0;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.comment-body {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #495057;
+}
+
+.comment-body em {
+  color: #6c757d;
+  font-style: italic;
 }
 
 /* Стили для информации о мастере в модальном окне */
 .master-info-modal {
   background: #f8f9fa;
   padding: 12px 15px;
-  margin: 0 0 20px 0;
+  margin: 0 20px 20px 20px;
   border-radius: 8px;
   border-left: 4px solid #007bff;
 }
@@ -295,6 +487,16 @@
 
 /* Адаптивность для мобильных устройств */
 @media (max-width: 768px) {
+  .controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  #weekLabel {
+    order: -1;
+    margin-bottom: 10px;
+  }
+  
   .time-slot-group {
     margin-bottom: 8px;
   }
@@ -322,6 +524,72 @@
   .client-info {
     align-items: flex-start;
   }
-
+  
+  .record-content,
+  .comment-content,
+  .anamnesis-content {
+    margin: 10px;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+  }
+  
+  .btn-cancel,
+  .btn-submit,
+  .btn-close {
+    width: 100%;
+  }
+  
+  .info-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .info-label {
+    min-width: auto;
+  }
+  
+  .info-value {
+    text-align: left;
+    margin-left: 0;
+  }
+.note {
+  background: #fff8e1;
+  border-left: 4px solid #ffc107;
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #856404;
 }
 
+.note strong {
+  color: #856404;
+  font-weight: 600;
+}
+
+.record-modal .form-group small {
+  display: block;
+  margin-top: 4px;
+  color: #6c757d;
+}
+
+.comment-body {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #495057;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.comment-body em {
+  color: #6c757d;
+  font-style: italic;
+}
+}
