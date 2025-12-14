@@ -111,7 +111,7 @@ function initializeSchedule() {
     scheduleContainer.innerHTML = '<div class="loading">Загрузка расписания...</div>';
 
     try {
-      const response = await fetch('http://https://antohabeuty.store/api/api/books/slots/');
+      const response = await fetch('https://antohabeuty.store/api/api/books/slots/');
       if (!response.ok) {
         throw new Error(`Ошибка загрузки: ${response.status}`);
       }
@@ -625,3 +625,4 @@ function initializeSchedule() {
     renderWeekSchedule(currentWeek);
   });
 }
+
